@@ -420,14 +420,16 @@ html+='</div></div></div>';
 
 window.updCuota=async function(id,f,v){await fbUpd('cuotas',id,{[f]:v})}
 window.guardarCuotaEdit = async function(id) {
-  console.log('guardarCuotaEdit llamado con id:', id); 
+  console.log('guardarCuotaEdit llamado con id:', id);
   var desc = document.getElementById('_ec_desc_'+id).value.trim();
   var mon  = parseFloat(document.getElementById('_ec_mon_'+id).value);
   var fec  = document.getElementById('_ec_fec_'+id).value;
   var forma = document.getElementById('_ec_for_'+id).value;
+  console.log('valores:', desc, mon, fec, forma);
   if (!desc) { alert('Ingresa el concepto.'); return; }
   if (!mon)  { alert('Ingresa el monto.'); return; }
   await fbUpd('cuotas', id, { descripcion: desc, monto: mon, vencimiento: fec, forma: forma });
+  console.log('fbUpd OK, eAid:', eAid);
   renderCuotas();
   renderHistP(eAid);
 }
