@@ -1,0 +1,1096 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Deejay Academy</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0
+    }
+
+    body {
+      font-family: system-ui, sans-serif;
+      background: #f4f4f0;
+      color: #1a1a1a;
+      font-size: 14px
+    }
+
+    .app {
+      display: flex;
+      height: 100vh;
+      overflow: hidden
+    }
+
+    .sidebar {
+      width: 240px;
+      background: #1a1a2e;
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+      padding: 4px
+    }
+
+    .logo {
+      padding: 18px 16px;
+      border-bottom: 1px solid #2a2a4e;
+      overflow: hidden
+    }
+
+    .logo h1 {
+      font-size: 14px;
+      font-weight: 700;
+      color: #e8c547;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+      overflow: hidden
+    }
+
+    .logo p {
+      font-size: 10px;
+      color: #8888aa;
+      margin-top: 2px
+    }
+
+    .nav {
+      flex: 1;
+      padding: 10px 0;
+      overflow-y: auto
+    }
+
+    .ns {
+      font-size: 10px;
+      color: #6b7280;
+      padding: 10px 16px 4px;
+      letter-spacing: .8px;
+      text-transform: uppercase;
+      font-weight: 600
+    }
+
+    .ni {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 9px 16px;
+      cursor: pointer;
+      color: #aaa;
+      font-size: 13px;
+      border-radius: 6px;
+      margin: 2px 8px
+    }
+
+    .ni:hover {
+      background: #2a2a4e;
+      color: #fff
+    }
+
+    .ni.active {
+      background: #e8c547;
+      color: #1a1a2e;
+      font-weight: 600
+    }
+
+    .ni svg {
+      width: 15px;
+      height: 15px;
+      flex-shrink: 0
+    }
+
+    .main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden
+    }
+
+    .topbar {
+      background: #fff;
+      border-bottom: 1px solid #e0e0e0;
+      padding: 11px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between
+    }
+
+    .topbar h2 {
+      font-size: 15px;
+      font-weight: 600
+    }
+
+    .content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 18px
+    }
+
+    .page {
+      display: none
+    }
+
+    .page.active {
+      display: block
+    }
+
+    .sg {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin-bottom: 16px
+    }
+
+    .sc {
+      background: #fff;
+      border-radius: 10px;
+      padding: 13px 15px;
+      border: .5px solid #e0e0e0
+    }
+
+    .sc .lbl {
+      font-size: 11px;
+      color: #888;
+      margin-bottom: 3px
+    }
+
+    .sc .val {
+      font-size: 20px;
+      font-weight: 600;
+      color: #1a1a2e
+    }
+
+    .btn {
+      padding: 7px 13px;
+      border-radius: 8px;
+      border: 1px solid transparent;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 500;
+      font-family: inherit
+    }
+
+    .bp {
+      background: #e8c547;
+      color: #1a1a2e
+    }
+
+    .bp:hover {
+      background: #d4b040
+    }
+
+    .bd {
+      background: #fee2e2;
+      color: #b91c1c;
+      border-color: #fca5a5
+    }
+
+    .bd:hover {
+      background: #fca5a5
+    }
+
+    .bs {
+      background: #dcfce7;
+      color: #15803d;
+      border-color: #86efac
+    }
+
+    .bo {
+      background: #fff;
+      border: 1px solid #ddd;
+      color: #444
+    }
+
+    .bo:hover {
+      background: #f5f5f5
+    }
+
+    .bsm {
+      padding: 5px 9px;
+      font-size: 12px
+    }
+
+    .tw {
+      background: #fff;
+      border-radius: 10px;
+      border: .5px solid #e0e0e0;
+      overflow: hidden
+    }
+
+    .ttb {
+      padding: 10px 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      border-bottom: 1px solid #f0f0f0;
+      flex-wrap: wrap
+    }
+
+    .si {
+      flex: 1;
+      min-width: 140px;
+      padding: 6px 11px;
+      border: 1px solid #e0e0e0;
+      border-radius: 8px;
+      font-size: 13px;
+      outline: none;
+      font-family: inherit
+    }
+
+    .si:focus {
+      border-color: #e8c547
+    }
+
+    .fs {
+      padding: 6px 10px;
+      border: 1px solid #e0e0e0;
+      border-radius: 8px;
+      font-size: 13px;
+      background: #fff;
+      outline: none;
+      font-family: inherit
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse
+    }
+
+    th {
+      padding: 9px 13px;
+      text-align: left;
+      font-size: 11px;
+      font-weight: 600;
+      color: #888;
+      text-transform: uppercase;
+      border-bottom: 1px solid #f0f0f0;
+      background: #fafafa
+    }
+
+    #horarios-root th {
+      background: transparent !important;
+      border: none !important;
+      color: inherit !important
+    }
+
+    td {
+      padding: 9px 13px;
+      border-bottom: .5px solid #f5f5f5;
+      font-size: 13px;
+      vertical-align: middle
+    }
+
+    tr:last-child td {
+      border-bottom: none
+    }
+
+    tr:hover td {
+      background: #fafafa
+    }
+
+    .avp {
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      background: #e8c547;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-weight: 600;
+      color: #1a1a2e;
+      flex-shrink: 0
+    }
+
+    .bdg {
+      display: inline-block;
+      padding: 2px 7px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 500
+    }
+
+    .bg {
+      background: #dcfce7;
+      color: #15803d
+    }
+
+    .br {
+      background: #fee2e2;
+      color: #b91c1c
+    }
+
+    .by {
+      background: #fef9c3;
+      color: #a16207
+    }
+
+    .bb {
+      background: #dbeafe;
+      color: #1d4ed8
+    }
+
+    .bgr {
+      background: #f0f0f0;
+      color: #555
+    }
+
+    .ov {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, .5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      padding: 16px;
+      visibility: hidden;
+      opacity: 0;
+      transition: opacity .15s
+    }
+
+    .ov.show {
+      visibility: visible;
+      opacity: 1
+    }
+
+    .modal {
+      background: #fff;
+      border-radius: 14px;
+      width: 100%;
+      max-width: 620px;
+      max-height: 92vh;
+      overflow-y: auto;
+      pointer-events: all
+    }
+
+    .mh {
+      padding: 16px 18px;
+      border-bottom: 1px solid #f0f0f0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      background: #fff;
+      z-index: 1
+    }
+
+    .mh h3 {
+      font-size: 15px;
+      font-weight: 600
+    }
+
+    .mb {
+      padding: 18px
+    }
+
+    .mf {
+      padding: 12px 18px;
+      border-top: 1px solid #f0f0f0;
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+      position: sticky;
+      bottom: 0;
+      background: #fff
+    }
+
+    .fg {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px
+    }
+
+    .fgp {
+      display: flex;
+      flex-direction: column;
+      gap: 3px
+    }
+
+    .fgp.full {
+      grid-column: 1/-1
+    }
+
+    label {
+      font-size: 12px;
+      font-weight: 500;
+      color: #555
+    }
+
+    input,
+    select,
+    textarea {
+      padding: 7px 10px;
+      border: 1px solid #e0e0e0;
+      border-radius: 8px;
+      font-size: 13px;
+      outline: none;
+      width: 100%;
+      font-family: inherit;
+      background: #fff
+    }
+
+    input:focus,
+    select:focus,
+    textarea:focus {
+      border-color: #e8c547
+    }
+
+    textarea {
+      resize: vertical;
+      min-height: 56px
+    }
+
+    .pu {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 14px
+    }
+
+    .pp {
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      border: 2px dashed #ddd;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      cursor: pointer;
+      position: relative;
+      flex-shrink: 0
+    }
+
+    .pp img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover
+    }
+
+    .pp input[type=file] {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      cursor: pointer;
+      width: 100%;
+      height: 100%
+    }
+
+    .tab-bar {
+      display: flex;
+      gap: 2px;
+      margin-bottom: 16px;
+      background: #f0f0f0;
+      border-radius: 10px;
+      padding: 3px
+    }
+
+    .tab {
+      padding: 7px 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 500;
+      color: #666
+    }
+
+    .tab.active {
+      background: #fff;
+      color: #1a1a2e;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, .1)
+    }
+
+    .cc {
+      background: #fff;
+      border-radius: 10px;
+      border: .5px solid #e0e0e0;
+      padding: 15px;
+      margin-bottom: 10px
+    }
+
+    .ll {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 6px
+    }
+
+    .ai {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 14px;
+      border-bottom: .5px solid #f5f5f5;
+      font-size: 13px
+    }
+
+    .cbw {
+      display: flex;
+      align-items: flex-end;
+      gap: 6px;
+      height: 120px;
+      padding: 8px 0
+    }
+
+    .cbc {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      flex: 1
+    }
+
+    .cb {
+      width: 100%;
+      background: #e8c547;
+      border-radius: 4px 4px 0 0;
+      min-height: 4px
+    }
+
+    .cbl {
+      font-size: 10px;
+      color: #888
+    }
+
+    .cbv {
+      font-size: 10px;
+      font-weight: 600;
+      color: #555
+    }
+
+    ::-webkit-scrollbar {
+      width: 4px
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: #ddd;
+      border-radius: 4px
+    }
+
+    .fixed-panel {
+      position: fixed;
+      bottom: 40px;
+      right: 20px;
+      background: #1a1a2e;
+      color: #fff;
+      padding: 12px 16px;
+      border-radius: 10px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, .3);
+      z-index: 999;
+      display: none
+    }
+  </style>
+</head>
+
+<body>
+  <div class="app">
+    <div class="sidebar">
+      <div class="logo">
+        <h1>&#11041; DEEJAY ACADEMY</h1>
+        <p>Sistema de gestión</p>
+      </div>
+      <nav class="nav">
+        <div class="ns">General</div>
+        <div class="ni active" onclick="showPage('dashboard',this)"><svg viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" stroke-width="2">
+            <rect x="3" y="3" width="7" height="7" />
+            <rect x="14" y="3" width="7" height="7" />
+            <rect x="3" y="14" width="7" height="7" />
+            <rect x="14" y="14" width="7" height="7" />
+          </svg>Dashboard</div>
+        <div class="ni" onclick="showPage('alertas',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-width="2">
+            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+            <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+          </svg>Alertas <span id="badge-al"
+            style="margin-left:auto;display:none;background:#fee2e2;color:#b91c1c;border-radius:20px;font-size:10px;padding:1px 6px">0</span>
+        </div>
+        <div class="ns">Academia</div>
+        <div class="ni" onclick="showPage('alumnos',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-width="2">
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+            <circle cx="9" cy="7" r="4" />
+          </svg>Alumnos</div>
+        <div class="ni" onclick="showPage('cursos',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-width="2">
+            <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
+            <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
+          </svg>Cursos</div>
+        <div class="ni" onclick="showPage('asistencia',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-width="2">
+            <rect x="3" y="4" width="18" height="18" rx="2" />
+            <line x1="3" y1="10" x2="21" y2="10" />
+          </svg>Asistencia</div>
+        <div class="ns">Finanzas</div>
+        <div class="ni" onclick="showPage('pagos',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-width="2">
+            <rect x="1" y="4" width="22" height="16" rx="2" />
+            <line x1="1" y1="10" x2="23" y2="10" />
+          </svg>Pagos</div>
+        <div class="ni" onclick="showPage('reporte',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-width="2">
+            <line x1="18" y1="20" x2="18" y2="10" />
+            <line x1="12" y1="20" x2="12" y2="4" />
+            <line x1="6" y1="20" x2="6" y2="14" />
+          </svg>Reportes</div>
+        <div class="ns">Planificación</div>
+        <div class="ni" onclick="showPage('horarios_aulas',this)"><svg viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" stroke-width="2">
+            <rect x="3" y="4" width="18" height="18" rx="2" />
+            <line x1="3" y1="10" x2="21" y2="10" />
+          </svg>Horarios por Cursos</div>
+        <div class="ns">Herramientas</div>
+        <div class="ni" onclick="showPage('exportar',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-width="2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+            <polyline points="7 10 12 15 17 10" />
+            <line x1="12" y1="15" x2="12" y2="3" />
+          </svg>Exportar Base</div>
+      </nav>
+    </div>
+    <div class="main">
+      <div class="topbar">
+        <h2 id="page-title">Dashboard</h2>
+        <div id="topbar-acts" style="display:flex;gap:8px"></div>
+      </div>
+      <div class="content">
+
+        <div id="page-dashboard" class="page active">
+          <div class="sg">
+            <div class="sc">
+              <div class="lbl">Alumnos registrados</div>
+              <div class="val" id="s-act">0</div>
+            </div>
+            <div class="sc">
+              <div class="lbl">Pagos este mes</div>
+              <div class="val" id="s-mes">$0</div>
+            </div>
+            <div class="sc">
+              <div class="lbl">Cuotas pendientes</div>
+              <div class="val" id="s-pen" style="color:#b91c1c">0</div>
+            </div>
+            <div class="sc">
+              <div class="lbl">Cursos</div>
+              <div class="val" id="s-cur">0</div>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px">
+            <div class="tw">
+              <div style="padding:12px 14px;font-weight:600;font-size:13px;border-bottom:1px solid #f0f0f0">Ingresos 6
+                meses</div>
+              <div style="padding:14px" id="chart"></div>
+            </div>
+            <div class="tw">
+              <div style="padding:12px 14px;font-weight:600;font-size:13px;border-bottom:1px solid #f0f0f0">Alertas de
+                deudores</div>
+              <div id="dash-al"></div>
+            </div>
+          </div>
+          <div class="tw">
+            <div style="padding:12px 14px;font-weight:600;font-size:13px;border-bottom:1px solid #f0f0f0">Alumnos
+              recientes</div>
+            <table>
+              <thead>
+                <tr>
+                  <th>Alumno</th>
+                  <th>Curso</th>
+                  <th>Ingreso</th>
+                  <th>Fin</th>
+                </tr>
+              </thead>
+              <tbody id="dash-rec"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div id="page-alertas" class="page">
+          <div id="alertas-lista" class="tw"></div>
+        </div>
+
+        <div id="page-alumnos" class="page">
+          <div class="tw">
+            <div class="ttb">
+              <input class="si" placeholder="Buscar alumno por nombre, cédula..." id="q-al" oninput="renderAlumnos()">
+              <select class="fs" id="f-cur" onchange="renderAlumnos()" style="width:160px">
+                <option value="">Todos los cursos</option>
+              </select>
+            </div>
+            <table>
+              <thead>
+                <tr>
+                  <th></th>
+                  <th>Nombre</th>
+                  <th>Teléfono</th>
+                  <th>Curso/Nivel</th>
+                  <th>Inicio</th>
+                  <th>Fin</th>
+                  <th>Acciones</th>
+                </tr>
+              </thead>
+              <tbody id="t-al"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div id="page-cursos" class="page">
+          <div class="tab-bar">
+            <div class="tab active" onclick="swCT('lista',this)">Cursos</div>
+            <div class="tab" onclick="swCT('gantt',this)">Línea de tiempo</div>
+          </div>
+          <div id="ct-lista">
+            <div id="cursos-lista"></div>
+          </div>
+          <div id="ct-gantt" style="display:none">
+            <div class="tw" style="overflow-x:auto">
+              <div id="gantt-c" style="min-width:700px;padding:16px"></div>
+            </div>
+          </div>
+        </div>
+
+        <div id="page-asistencia" class="page">
+          <div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap">
+            <select class="fs" id="q-asist-al" onchange="renderAsistencia()" style="width:200px">
+              <option value="">Todos</option>
+            </select>
+            <input type="date" id="q-asist-f" class="fs" style="width:160px" onchange="renderAsistencia()">
+            <button class="btn bp bsm" onclick="openMAsist()">+ Registrar</button>
+          </div>
+          <div class="tw">
+            <table>
+              <thead>
+                <tr>
+                  <th>Alumno</th>
+                  <th>Curso</th>
+                  <th>Fecha</th>
+                  <th>Estado</th>
+                  <th>Notas</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="t-asist"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div id="page-pagos" class="page">
+          <div class="tw">
+            <div class="ttb">
+              <input class="si" placeholder="Buscar pago..." id="q-pag" oninput="renderPagos()">
+              <select class="fs" id="f-epag" onchange="renderPagos()" style="width:150px">
+                <option value="">Todos</option>
+                <option>Pagado</option>
+                <option>Pendiente</option>
+                <option>Vencido</option>
+              </select>
+            </div>
+            <table>
+              <thead>
+                <tr>
+                  <th>Alumno</th>
+                  <th>Curso</th>
+                  <th>Período</th>
+                  <th>Forma</th>
+                  <th>Monto</th>
+                  <th>Estado</th>
+                  <th>Fecha</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="t-pag"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div id="page-reporte" class="page">
+          <div
+            style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;padding:12px;background:#fff;border-radius:10px;border:.5px solid #e0e0e0">
+            <select class="fs" id="r-al" onchange="renderReporte()">
+              <option value="">Todos los alumnos</option>
+            </select>
+            <select class="fs" id="r-cur" onchange="renderReporte()">
+              <option value="">Todos los cursos</option>
+            </select>
+            <select class="fs" id="r-est" onchange="renderReporte()">
+              <option value="">Todos</option>
+              <option>Pagado</option>
+              <option>Pendiente</option>
+              <option>Vencido</option>
+            </select>
+            <input type="month" class="fs" id="r-mes" onchange="renderReporte()" style="width:150px">
+            <button class="btn bo bsm" onclick="printRep()">&#128424; Imprimir</button>
+          </div>
+          <div class="sg" style="grid-template-columns:repeat(3,1fr)">
+            <div class="sc">
+              <div class="lbl">Recaudado</div>
+              <div class="val" id="r-tot">$0</div>
+            </div>
+            <div class="sc">
+              <div class="lbl">Pendiente</div>
+              <div class="val" id="r-pen" style="color:#b91c1c">$0</div>
+            </div>
+            <div class="sc">
+              <div class="lbl">Registros</div>
+              <div class="val" id="r-cnt">0</div>
+            </div>
+          </div>
+          <div class="tw" id="rep-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Alumno</th>
+                  <th>Curso</th>
+                  <th>Período</th>
+                  <th>Forma</th>
+                  <th>Monto</th>
+                  <th>Estado</th>
+                  <th>Fecha</th>
+                </tr>
+              </thead>
+              <tbody id="t-rep"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div id="page-horarios_aulas" class="page">
+          <div id="horarios-root"></div>
+        </div>
+
+        <div id="page-exportar" class="page">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
+            <div class="tw" style="padding:20px">
+              <h3 style="margin-bottom:6px;font-size:14px">Exportar base de alumnos</h3>
+              <p style="font-size:12px;color:#666;margin-bottom:10px">Archivo compatible con Excel.</p><button
+                class="btn bp" onclick="expAlCSV()">&#8659; Descargar CSV alumnos</button>
+            </div>
+            <div class="tw" style="padding:20px">
+              <h3 style="margin-bottom:6px;font-size:14px">Exportar historial financiero</h3>
+              <p style="font-size:12px;color:#666;margin-bottom:10px">Flujos de caja y abonos.</p><button class="btn bp"
+                onclick="expPagCSV()">&#8659; Descargar CSV pagos</button>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+            <div class="tw" style="padding:20px">
+              <h3 style="margin-bottom:6px;font-size:14px">&#128190; Backup completo JSON</h3>
+              <p style="font-size:12px;color:#666;margin-bottom:10px">Descarga <b>todos</b> los datos: alumnos, pagos,
+                cuotas, cursos, asistencias y horarios en un solo archivo con fecha.</p>
+              <button class="btn bp" onclick="expJSON()">&#8659; Descargar backup JSON</button>
+            </div>
+            <div class="tw" style="padding:20px">
+              <h3 style="margin-bottom:6px;font-size:14px">&#128228; Restaurar desde JSON</h3>
+              <p style="font-size:12px;color:#666;margin-bottom:10px">Sube un backup JSON para importar todos los
+                registros a Firestore. Los datos existentes <b>no se eliminan</b>.</p>
+              <button class="btn bo" onclick="impJSON()" style="border-color:#e8c547">&#8657; Seleccionar archivo
+                JSON</button>
+              <div id="_imp_status" style="margin-top:10px;font-size:12px;color:#888"></div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- Paneles flotantes -->
+  <div class="fixed-panel" id="al-panel">
+    <span style="font-size:12px;color:#aaa;display:block;margin-bottom:4px">Alumno seleccionado:</span>
+    <b id="al-panel-info" style="color:#e8c547;font-size:13px"></b>
+    <div style="display:flex;gap:6px;margin-top:8px">
+      <button class="btn bo bsm" onclick="doAlVer()">Ver Perfil</button>
+      <button class="btn bo bsm" onclick="doAlEdit()">Editar</button>
+      <button class="btn bd bsm" onclick="doAlDel()">Eliminar</button>
+      <button class="btn bo bsm" onclick="closeAlPanel()" style="background:#333;color:#fff;border:none">X</button>
+    </div>
+  </div>
+
+  <div class="fixed-panel" id="pag-panel">
+    <span style="font-size:12px;color:#aaa;display:block;margin-bottom:4px">Pago seleccionado:</span>
+    <b id="pag-panel-info" style="color:#e8c547;font-size:13px"></b>
+    <div style="display:flex;gap:6px;margin-top:8px">
+      <button class="btn bo bsm" onclick="doPagEdit()">Editar</button>
+      <button class="btn bd bsm" onclick="doPagDel()">Eliminar</button>
+      <button class="btn bo bsm" onclick="closePagPanel()" style="background:#333;color:#fff;border:none">X</button>
+    </div>
+  </div>
+
+  <!-- Modal Alumno -->
+  <div class="ov" id="m-alumno">
+    <div class="modal">
+      <div class="mh">
+        <h3 id="m-al-tit">Nuevo alumno</h3><button class="btn bo bsm" onclick="closeM('m-alumno')">X</button>
+      </div>
+      <div class="mb">
+        <div class="pu">
+          <div class="pp"><span id="ph-icon" style="font-size:20px;color:#ccc">&#128100;</span><img id="ph-img"
+              style="display:none;width:100%;height:100%;object-fit:cover"><input type="file" accept="image/*"
+              onchange="prevFoto(event)"></div>
+          <div>
+            <div style="font-size:13px;font-weight:500">Foto del alumno</div>
+            <div style="font-size:12px;color:#888">Haz clic para subir</div>
+          </div>
+        </div>
+        <div class="fg">
+          <div class="fgp"><label>Nombre Completo *</label><input id="f-nom" placeholder="Ej: Juan Garcia"></div>
+          <div class="fgp"><label>Documento / Cedula *</label><input id="f-ced" placeholder="Ej: 102345678"></div>
+          <div class="fgp"><label>Telefono Celular *</label><input id="f-tel" placeholder="+57 300 000 0000"></div>
+          <div class="fgp"><label>Email</label><input id="f-ema" type="email" placeholder="correo@ejemplo.com"></div>
+          <div class="fgp"><label>Edad</label><input id="f-edad" type="number" placeholder="Ej: 21"></div>
+          <div class="fgp"><label>Tipo de Sangre</label><select id="f-rh">
+              <option value="">Seleccionar...</option>
+              <option>O+</option>
+              <option>O-</option>
+              <option>A+</option>
+              <option>A-</option>
+              <option>B+</option>
+              <option>B-</option>
+              <option>AB+</option>
+              <option>AB-</option>
+            </select></div>
+          <div class="fgp"><label>Modulo/Curso *</label><select id="f-mod" onchange="updNiv()">
+              <option value="">Seleccionar...</option>
+            </select></div>
+          <div class="fgp"><label>Nivel</label><select id="f-niv">
+              <option value="">Seleccionar...</option>
+            </select></div>
+          <div class="fgp"><label>Inicio curso</label><input id="f-ini" type="date"></div>
+          <div class="fgp"><label>Fin curso</label><input id="f-fin" type="date"></div>
+          <div class="fgp"><label>Fecha de ingreso general</label><input id="f-ing" type="date"></div>
+          <div class="fgp"><label>Contacto de Referencia</label><input id="f-ref"
+              placeholder="Nombre y celular familiar"></div>
+          <div class="fgp full"><label>Direccion de Residencia</label><input id="f-dir"
+              placeholder="Calle / Barrio / Ciudad"></div>
+          <div class="fgp full"><label>Notas / Observaciones</label><textarea id="f-not"></textarea></div>
+        </div>
+        <div style="margin-top:18px;padding-top:16px;border-top:2px solid #f0f0f0">
+          <div style="font-size:13px;font-weight:700;color:#15803d;margin-bottom:10px"><span
+              style="background:#dcfce7;border-radius:6px;padding:4px 10px">Pago realizado</span></div>
+          <div class="fg">
+            <div class="fgp"><label>Descripcion/Periodo</label><input id="p2-per" placeholder="Ej: Julio 2026"></div>
+            <div class="fgp"><label>Monto pagado (COP)</label><input id="p2-mon" type="number"></div>
+            <div class="fgp"><label>Forma de pago</label><select id="p2-for">
+                <option value="Efectivo">Efectivo</option>
+                <option value="Llave">Llave</option>
+                <option value="Tarjeta">Tarjeta</option>
+              </select></div>
+            <div class="fgp"><label>Fecha</label><input id="p2-fec" type="date"></div>
+            <div class="fgp full"><label>Notas del pago</label><input id="p2-not"></div>
+          </div>
+          <button class="btn bs bsm" style="margin-top:8px" onclick="regPagAl()">Registrar pago</button>
+          <div id="p2-hist" style="margin-top:12px"></div>
+        </div>
+        <div style="margin-top:16px;padding-top:16px;border-top:2px solid #fef9c3">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+            <div style="font-size:13px;font-weight:700;color:#a16207"><span
+                style="background:#fef9c3;border-radius:6px;padding:4px 10px">Por pagar</span></div>
+            <button class="btn bo bsm" onclick="addCuota()">+ Agregar cuota</button>
+          </div>
+          <div id="cuotas-lista"></div>
+        </div>
+      </div>
+      <div class="mf">
+        <button class="btn bo" onclick="closeM('m-alumno')">Cancelar</button>
+        <button class="btn bp" onclick="saveAlumno()">Guardar alumno</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Pago -->
+  <div class="ov" id="m-pago">
+    <div class="modal" style="max-width:420px">
+      <div class="mh">
+        <h3>Registrar pago</h3><button class="btn bo bsm" onclick="closeM('m-pago')">X</button>
+      </div>
+      <div class="mb">
+        <div class="fg" style="grid-template-columns:1fr">
+          <div class="fgp"><label>Alumno</label><select id="mp-al">
+              <option value="">Seleccionar...</option>
+            </select></div>
+          <div class="fgp"><label>Periodo</label><input id="mp-per"></div>
+          <div class="fgp"><label>Forma de pago</label><select id="mp-for">
+              <option value="Efectivo">Efectivo</option>
+              <option value="Llave">Llave</option>
+              <option value="Tarjeta">Tarjeta</option>
+            </select></div>
+          <div class="fgp"><label>Monto (COP)</label><input id="mp-mon" type="number"></div>
+          <div class="fgp"><label>Estado</label><select id="mp-est">
+              <option>Pagado</option>
+              <option>Pendiente</option>
+              <option>Vencido</option>
+            </select></div>
+          <div class="fgp"><label>Fecha</label><input id="mp-fec" type="date"></div>
+          <div class="fgp"><label>Notas</label><textarea id="mp-not"></textarea></div>
+        </div>
+      </div>
+      <div class="mf">
+        <button class="btn bd" id="mp-del" style="margin-right:auto;display:none" onclick="delPagoM()">Eliminar</button>
+        <button class="btn bo" onclick="closeM('m-pago')">Cancelar</button>
+        <button class="btn bp" onclick="savePago()">Guardar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Curso -->
+  <div class="ov" id="m-curso">
+    <div class="modal" style="max-width:420px">
+      <div class="mh">
+        <h3 id="mc-tit">Nuevo curso</h3><button class="btn bo bsm" onclick="closeM('m-curso')">X</button>
+      </div>
+      <div class="mb">
+        <div class="fg" style="grid-template-columns:1fr">
+          <div class="fgp"><label>Nombre *</label><input id="mc-nom"></div>
+          <div class="fgp"><label>Niveles (separados por coma)</label><input id="mc-niv"
+              placeholder="Ej: Basico, Intermedio"></div>
+          <div class="fgp"><label>Descripcion</label><textarea id="mc-des"></textarea></div>
+          <div class="fgp"><label>Fecha inicio</label><input id="mc-ini" type="date"></div>
+          <div class="fgp"><label>Fecha fin</label><input id="mc-fin" type="date"></div>
+        </div>
+      </div>
+      <div class="mf"><button class="btn bo" onclick="closeM('m-curso')">Cancelar</button><button class="btn bp"
+          id="mc-btn" onclick="saveCurso()">Guardar</button></div>
+    </div>
+  </div>
+
+  <!-- Modal Asistencia -->
+  <div class="ov" id="m-asist">
+    <div class="modal" style="max-width:380px">
+      <div class="mh">
+        <h3>Registrar asistencia</h3><button class="btn bo bsm" onclick="closeM('m-asist')">X</button>
+      </div>
+      <div class="mb">
+        <div class="fg" style="grid-template-columns:1fr">
+          <div class="fgp"><label>Alumno</label><select id="ma-al">
+              <option value="">Seleccionar...</option>
+            </select></div>
+          <div class="fgp"><label>Fecha</label><input id="ma-fec" type="date"></div>
+          <div class="fgp"><label>Estado</label><select id="ma-est">
+              <option>Presente</option>
+              <option>Ausente</option>
+              <option>Tardanza</option>
+            </select></div>
+          <div class="fgp"><label>Notas</label><textarea id="ma-not"></textarea></div>
+        </div>
+      </div>
+      <div class="mf"><button class="btn bo" onclick="closeM('m-asist')">Cancelar</button><button class="btn bp"
+          onclick="saveAsist()">Guardar</button></div>
+    </div>
+  </div>
+
+  <!-- Modal Ver Perfil -->
+  <div class="ov" id="m-ver">
+    <div class="modal">
+      <div class="mh">
+        <h3>Perfil del alumno</h3><button class="btn bo bsm" onclick="closeM('m-ver')">X</button>
+      </div>
+      <div class="mb" id="m-ver-body"></div>
+      <div class="mf"><button class="btn bo" onclick="closeM('m-ver')">Cerrar</button></div>
+    </div>
+  </div>
+
+  <!-- ✅ FIREBASE + SCRIPT PRINCIPAL -->
+  <script type="module" src="script.js"></script>
+
+</body>
+
+</html>
