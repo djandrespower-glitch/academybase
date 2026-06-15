@@ -878,8 +878,6 @@ async function importarJSON(data){
       try{if(id)await fbSet(col,id,row);else await fbAdd(col,row);}catch(err){console.warn('Error importando '+col,err);}
       done++;if(el)el.textContent='Importando... '+done+'/'+total;
     }
-  }
-
  // ============================================================
 // EXPORE LAS FUNCIONES AL ÁMBITO GLOBAL (Solución al ReferenceError)
 // ============================================================
