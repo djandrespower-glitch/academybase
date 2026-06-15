@@ -425,6 +425,14 @@ window.guardarCuotaEdit = async function(id, desc, mon, fec, forma) {
   if (!desc) { alert('Ingresa el concepto.'); return; }
   if (!mon)  { alert('Ingresa el monto.'); return; }
   await fbUpd('cuotas', id, { descripcion: desc, monto: mon, vencimiento: fec, forma: forma });
+  // Actualizar DB local manualmente
+  var idx = DB.cuotas.findIndex(function(c){ return c.id === id; });
+  if (idx >= 0) {
+    DB.cuotas[idx].descripcion = desc;
+    DB.cuotas[idx].monto = mon;
+    DB.cuotas[idx].vencimiento = fec;
+    DB.cuotas[idx].forma = forma;
+  }
   renderCuotas();
   renderHistP(eAid);
 }
