@@ -420,6 +420,7 @@ html+='</div></div></div>';
 
 window.updCuota=async function(id,f,v){await fbUpd('cuotas',id,{[f]:v})}
 window.guardarCuotaEdit = async function(id) {
+  console.log('guardarCuotaEdit llamado con id:', id); 
   var desc = document.getElementById('_ec_desc_'+id).value.trim();
   var mon  = parseFloat(document.getElementById('_ec_mon_'+id).value);
   var fec  = document.getElementById('_ec_fec_'+id).value;
