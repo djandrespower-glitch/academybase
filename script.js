@@ -518,12 +518,11 @@ function renderPagos(){
   var list=DB.pagos.filter(function(p){if(fe&&p.estado!==fe)return false;if(q){var nom=gAN(p.alumnoId).toLowerCase();if(!nom.includes(q)&&!(p.periodo||'').toLowerCase().includes(q))return false}return true});
   var cuotasRows=[];
   if(!fe||fe==='Pendiente'){
-    cuotasRows=DB.cuotas.filter(function(c){if(q){var nom=gAN(c.alumnoId).toLowerCase();if(!nom.includes(q)&&!(c.descripcion||'').toLowerCase().includes(q))return false}return true}).map(function(c){
-      return'<tr><td>'+gAN(c.alumnoId)+'</td><td>'+gAC(c.alumnoId)+'</td><td>'+(c.descripcion||'-')+'</td><td>'+(c.forma||'-')+'</td><td>$'+parseFloat(c.monto||0).toLocaleString('es-CO')+'</td><td>'+bdg('Pendiente')+'</td><td>'+(c.vencimiento||'-')+'</td><td></td></tr>';
-    });
+    cuotasRows=DB.cuotas.filter(function(c){if(q){var nom=gAN(c.alumnoId).toLowerCase();if(!nom.includes(q)&&!(c.descripcion||'').toLowerCase().includes(q))return false}return true}).map(function(c){return'<tr><td>'+gAN(c.alumnoId)+'</td><td>'+gAC(c.alumnoId)+'</td><td>'+(c.descripcion||'-')+'</td><td>'+(c.forma||'-')+'</td><td>$'+parseFloat(c.monto||0).toLocaleString('es-CO')+'</td><td>'+bdg('Pendiente')+'</td><td>'+(c.vencimiento||'-')+'</td><td></td></tr>';});
   }
-  var rows=list.map(function(p){return'<tr style="cursor:pointer" onclick="selPago(''+p.id+'',''+gAN(p.alumnoId).replace(/'/g,'')+'')">'+'<td>'+gAN(p.alumnoId)+'</td><td>'+gAC(p.alumnoId)+'</td><td>'+(p.periodo||'-')+'</td><td>'+(p.forma||'-')+'</td><td>$'+(p.monto||0).toLocaleString('es-CO')+'</td><td>'+bdg(p.estado)+'</td><td>'+(p.fecha||'-')+'</td><td><span style="font-size:11px;color:#aaa">ver</span></td></tr>';}).concat(cuotasRows);
-  document.getElementById('t-pag').innerHTML=rows.join('')||'<tr><td colspan="8" style="text-align:center;color:#aaa;padding:20px">Sin registros</td></tr>';
+  var pagRows=list.map(function(p){var n=gAN(p.alumnoId).replace(/'/g,'');return'<tr style="cursor:pointer" onclick="selPago(\'' +p.id+ '\',\''+n+'\')"><td>'+gAN(p.alumnoId)+'</td><td>'+gAC(p.alumnoId)+'</td><td>'+(p.periodo||'-')+'</td><td>'+(p.forma||'-')+'</td><td>$'+(p.monto||0).toLocaleString('es-CO')+'</td><td>'+bdg(p.estado)+'</td><td>'+(p.fecha||'-')+'</td><td><span style="font-size:11px;color:#aaa">ver</span></td></tr>';});
+  var all=pagRows.concat(cuotasRows);
+  document.getElementById('t-pag').innerHTML=all.length?all.join(''):'<tr><td colspan="8" style="text-align:center;color:#aaa;padding:20px">Sin registros</td></tr>';
 }
 
 window.openMAsist=function(){popAl('ma-al');document.getElementById('ma-fec').value=new Date().toISOString().split('T')[0];document.getElementById('ma-not').value='';openM('m-asist')}
