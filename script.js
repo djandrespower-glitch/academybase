@@ -425,7 +425,6 @@ window.guardarCuotaEdit = async function(id, desc, mon, fec, forma) {
   if (!desc) { alert('Ingresa el concepto.'); return; }
   if (!mon)  { alert('Ingresa el monto.'); return; }
   await fbUpd('cuotas', id, { descripcion: desc, monto: mon, vencimiento: fec, forma: forma });
-  // Actualizar DB local manualmente
   var idx = DB.cuotas.findIndex(function(c){ return c.id === id; });
   if (idx >= 0) {
     DB.cuotas[idx].descripcion = desc;
@@ -514,7 +513,18 @@ window.closePagPanel=function(){_selPagId=null;document.getElementById('pag-pane
 window.doPagEdit=function(){var id=_selPagId;closePagPanel();if(id)openMPag(id)}
 window.doPagDel=function(){if(!_selPagId)return;var pid=_selPagId;closePagPanel();confirmDel('Eliminar este pago?',async function(){await fbDel('pagos',pid)})}
 
-function renderPagos(){var q=(document.getElementById('q-pag').value||'').toLowerCase(),fe=document.getElementById('f-epag').value;var list=DB.pagos.filter(function(p){if(fe&&p.estado!==fe)return false;if(q){var nom=gAN(p.alumnoId).toLowerCase();if(!nom.includes(q)&&!(p.periodo||'').toLowerCase().includes(q))return false}return true});document.getElementById('t-pag').innerHTML=list.map(function(p){return'<tr style="cursor:pointer" onclick="selPago(\''+p.id+'\',\''+gAN(p.alumnoId).replace(/'/g,'')+'\')">'+'<td>'+gAN(p.alumnoId)+'</td><td>'+gAC(p.alumnoId)+'</td><td>'+(p.periodo||'-')+'</td><td>'+(p.forma||'-')+'</td><td>$'+(p.monto||0).toLocaleString('es-CO')+'</td><td>'+bdg(p.estado)+'</td><td>'+(p.fecha||'-')+'</td><td><span style="font-size:11px;color:#aaa">ver</span></td></tr>'}).join('')||'<tr><td colspan="8" style="text-align:center;color:#aaa;padding:20px">Sin registros</td></tr>'}
+function renderPagos(){
+  var q=(document.getElementById('q-pag').value||'').toLowerCase(),fe=document.getElementById('f-epag').value;
+  var list=DB.pagos.filter(function(p){if(fe&&p.estado!==fe)return false;if(q){var nom=gAN(p.alumnoId).toLowerCase();if(!nom.includes(q)&&!(p.periodo||'').toLowerCase().includes(q))return false}return true});
+  var cuotasRows=[];
+  if(!fe||fe==='Pendiente'){
+    cuotasRows=DB.cuotas.filter(function(c){if(q){var nom=gAN(c.alumnoId).toLowerCase();if(!nom.includes(q)&&!(c.descripcion||'').toLowerCase().includes(q))return false}return true}).map(function(c){
+      return'<tr><td>'+gAN(c.alumnoId)+'</td><td>'+gAC(c.alumnoId)+'</td><td>'+(c.descripcion||'-')+'</td><td>'+(c.forma||'-')+'</td><td>$'+parseFloat(c.monto||0).toLocaleString('es-CO')+'</td><td>'+bdg('Pendiente')+'</td><td>'+(c.vencimiento||'-')+'</td><td></td></tr>';
+    });
+  }
+  var rows=list.map(function(p){return'<tr style="cursor:pointer" onclick="selPago(''+p.id+'',''+gAN(p.alumnoId).replace(/'/g,'')+'')">'+'<td>'+gAN(p.alumnoId)+'</td><td>'+gAC(p.alumnoId)+'</td><td>'+(p.periodo||'-')+'</td><td>'+(p.forma||'-')+'</td><td>$'+(p.monto||0).toLocaleString('es-CO')+'</td><td>'+bdg(p.estado)+'</td><td>'+(p.fecha||'-')+'</td><td><span style="font-size:11px;color:#aaa">ver</span></td></tr>';}).concat(cuotasRows);
+  document.getElementById('t-pag').innerHTML=rows.join('')||'<tr><td colspan="8" style="text-align:center;color:#aaa;padding:20px">Sin registros</td></tr>';
+}
 
 window.openMAsist=function(){popAl('ma-al');document.getElementById('ma-fec').value=new Date().toISOString().split('T')[0];document.getElementById('ma-not').value='';openM('m-asist')}
 window.saveAsist=async function(){
