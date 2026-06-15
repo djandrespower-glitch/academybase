@@ -410,7 +410,7 @@ html+='</select></div></div>';
 html+='<div style="display:flex;align-items:center;justify-content:space-between">';
 html+='<span style="font-size:11px;font-weight:600;color:'+colV+'">'+txtV+'</span>';
 html+='<div style="display:flex;gap:6px">';
-html+='<button class="btn bp bsm" data-cid="'+c.id+'" onclick="guardarCuotaEdit(this.dataset.cid)">Guardar</button>';
+html+='<button class="btn bp bsm" onclick="guardarCuotaEdit(\''+c.id+'\',document.getElementById(\'_ec_desc_'+c.id+'\').value,document.getElementById(\'_ec_mon_'+c.id+'\').value,document.getElementById(\'_ec_fec_'+c.id+'\').value,document.getElementById(\'_ec_for_'+c.id+'\').value)">Guardar</button>';
 html+='<button class="btn bs bsm" data-cid="'+c.id+'" onclick="cobrarCuota(this.dataset.cid)">Cobrar</button>';
 html+='<button class="btn bd bsm" data-cid="'+c.id+'" onclick="delCuota(this.dataset.cid)">Eliminar</button>';
 html+='</div></div></div>';
@@ -419,17 +419,12 @@ html+='</div></div></div>';
 }
 
 window.updCuota=async function(id,f,v){await fbUpd('cuotas',id,{[f]:v})}
-window.guardarCuotaEdit = async function(id) {
-  console.log('guardarCuotaEdit llamado con id:', id);
-  var desc = document.getElementById('_ec_desc_'+id).value.trim();
-  var mon  = parseFloat(document.getElementById('_ec_mon_'+id).value);
-  var fec  = document.getElementById('_ec_fec_'+id).value;
-  var forma = document.getElementById('_ec_for_'+id).value;
-  console.log('valores:', desc, mon, fec, forma);
+window.guardarCuotaEdit = async function(id, desc, mon, fec, forma) {
+  desc = (desc||'').trim();
+  mon  = parseFloat(mon);
   if (!desc) { alert('Ingresa el concepto.'); return; }
   if (!mon)  { alert('Ingresa el monto.'); return; }
   await fbUpd('cuotas', id, { descripcion: desc, monto: mon, vencimiento: fec, forma: forma });
-  console.log('fbUpd OK, eAid:', eAid);
   renderCuotas();
   renderHistP(eAid);
 }
