@@ -879,5 +879,18 @@ async function importarJSON(data){
       done++;if(el)el.textContent='Importando... '+done+'/'+total;
     }
   }
+
+ // ============================================================
+// EXPORE LAS FUNCIONES AL ÁMBITO GLOBAL (Solución al ReferenceError)
+// ============================================================
+window.deleteCurso = deleteCurso;
+window.deleteAlumno = deleteAlumno;
+window.deletePago = deletePago;
+window.deleteCuota = deleteCuota;
+
+// Si también tienes botones HTML que llaman directamente a estas funciones, expónlas aquí:
+if (typeof eliminarGrupoHorario === 'function') window.eliminarGrupoHorario = eliminarGrupoHorario;
+if (typeof abrirModalCurso === 'function') window.abrirModalCurso = abrirModalCurso;
+if (typeof abrirModalAlumno === 'function') window.abrirModalAlumno = abrirModalAlumno;
   if(el)el.innerHTML='<span style="color:#15803d;font-weight:600">✓ '+done+' registros importados correctamente</span>';
 }
