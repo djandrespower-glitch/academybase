@@ -394,30 +394,42 @@ function renderCuotas(){
     var colV=dias===null?'#888':dias<=0?'#b91c1c':dias<=7?'#a16207':'#15803d';
     var txtV=dias===null?'Sin fecha':dias<=0?'VENCIDA hace '+Math.abs(dias)+' dia(s)':'Vence en '+dias+' dia(s)';
     html+='<div style="background:#fffdf0;border:1px solid #fde68a;border-radius:8px;padding:10px;margin-bottom:8px">';
-    html+='<div style="display:grid;grid-template-columns:1fr 100px;gap:6px;margin-bottom:6px">';
-    html+='<input style="font-size:12px;padding:5px 8px;border:1px solid #e0e0e0;border-radius:6px" placeholder="Concepto" value="'+(c.descripcion||'').replace(/"/g,'&quot;')+'" onchange="updCuota(\''+c.id+'\',\'descripcion\',this.value)">';
-    html+='<input type="number" style="font-size:12px;padding:5px 8px;border:1px solid #e0e0e0;border-radius:6px" placeholder="Monto" value="'+(c.monto||'')+'" onchange="updCuota(\''+c.id+'\',\'monto\',this.value)">';
-    html+='</div>';
-    html+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px">';
-    html+='<div><div style="font-size:10px;color:#888;margin-bottom:2px">Fecha vencimiento</div>';
-    html+='<input type="date" style="font-size:12px;padding:5px 8px;border:1px solid #e0e0e0;border-radius:6px;width:100%" value="'+(c.vencimiento||'')+'" onchange="updCuota(\''+c.id+'\',\'vencimiento\',this.value)"></div>';
-    html+='<div><div style="font-size:10px;color:#888;margin-bottom:2px">Forma de cobro</div>';
-    html+='<select style="font-size:12px;padding:5px 8px;border:1px solid #e0e0e0;border-radius:6px;width:100%" onchange="updCuota(\''+c.id+'\',\'forma\',this.value)">';
-    html+='<option value="Efectivo" '+(c.forma==='Efectivo'?'selected':'')+'>Efectivo</option>';
-    html+='<option value="Llave" '+(c.forma==='Llave'?'selected':'')+'>Llave</option>';
-    html+='<option value="Tarjeta" '+(c.forma==='Tarjeta'?'selected':'')+'>Tarjeta</option>';
-    html+='</select></div></div>';
-    html+='<div style="display:flex;align-items:center;justify-content:space-between">';
-    html+='<span style="font-size:11px;font-weight:600;color:'+colV+'">'+txtV+'</span>';
-    html+='<div style="display:flex;gap:6px">';
-    html+='<button class="btn bs bsm" onclick="cobrarCuota(\''+c.id+'\')">Cobrar</button>';
-    html+='<button class="btn bd bsm" onclick="delCuota(\''+c.id+'\')">Eliminar</button>';
-    html+='</div></div></div>';
+   html+='<div style="display:grid;grid-template-columns:1fr 100px;gap:6px;margin-bottom:6px">';
+   html+='<input id="_ec_desc_'+c.id+'" style="font-size:12px;padding:5px 8px;border:1px solid #e0e0e0;border-radius:6px" placeholder="Concepto" value="'+(c.descripcion||'').replace(/"/g,'&quot;')+'">';
+   html+='<input id="_ec_mon_'+c.id+'" type="number" style="font-size:12px;padding:5px 8px;border:1px solid #e0e0e0;border-radius:6px" placeholder="Monto" value="'+(c.monto||'')+'">';
+   html+='</div>';
+html+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px">';
+html+='<div><div style="font-size:10px;color:#888;margin-bottom:2px">Fecha vencimiento</div>';
+html+='<input id="_ec_fec_'+c.id+'" type="date" style="font-size:12px;padding:5px 8px;border:1px solid #e0e0e0;border-radius:6px;width:100%" value="'+(c.vencimiento||'')+'"></div>';
+html+='<div><div style="font-size:10px;color:#888;margin-bottom:2px">Forma de cobro</div>';
+html+='<select id="_ec_for_'+c.id+'" style="font-size:12px;padding:5px 8px;border:1px solid #e0e0e0;border-radius:6px;width:100%">';
+html+='<option value="Efectivo" '+(c.forma==='Efectivo'?'selected':'')+'>Efectivo</option>';
+html+='<option value="Llave" '+(c.forma==='Llave'?'selected':'')+'>Llave</option>';
+html+='<option value="Tarjeta" '+(c.forma==='Tarjeta'?'selected':'')+'>Tarjeta</option>';
+html+='</select></div></div>';
+html+='<div style="display:flex;align-items:center;justify-content:space-between">';
+html+='<span style="font-size:11px;font-weight:600;color:'+colV+'">'+txtV+'</span>';
+html+='<div style="display:flex;gap:6px">';
+html+='<button class="btn bp bsm" onclick="guardarCuotaEdit(\''+c.id+'\')">Guardar</button>';
+html+='<button class="btn bs bsm" onclick="cobrarCuota(\''+c.id+'\')">Cobrar</button>';
+html+='<button class="btn bd bsm" onclick="delCuota(\''+c.id+'\')">Eliminar</button>';
+html+='</div></div></div>';
   });
   el.innerHTML=html;
 }
 
 window.updCuota=async function(id,f,v){await fbUpd('cuotas',id,{[f]:v})}
+window.guardarCuotaEdit = async function(id) {
+  var desc = document.getElementById('_ec_desc_'+id).value.trim();
+  var mon  = parseFloat(document.getElementById('_ec_mon_'+id).value);
+  var fec  = document.getElementById('_ec_fec_'+id).value;
+  var forma = document.getElementById('_ec_for_'+id).value;
+  if (!desc) { alert('Ingresa el concepto.'); return; }
+  if (!mon)  { alert('Ingresa el monto.'); return; }
+  await fbUpd('cuotas', id, { descripcion: desc, monto: mon, vencimiento: fec, forma: forma });
+  renderCuotas();
+  renderHistP(eAid);
+}
 
 window.delCuota=function(id){
   confirmDel('Eliminar esta cuota pendiente?',async function(){
