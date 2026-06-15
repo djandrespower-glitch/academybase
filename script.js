@@ -359,6 +359,7 @@ window.generarCuota=async function(){
   if(!fec){alert('Ingresa la fecha de vencimiento.');return}
   await fbAdd('cuotas',{alumnoId:eAid,descripcion:desc,monto:mon,vencimiento:fec,forma:forma,creado:new Date().toISOString().split('T')[0]});
   _nuevaCuota=null;
+  renderCuotas();
   renderHistP(eAid);
 }
 
