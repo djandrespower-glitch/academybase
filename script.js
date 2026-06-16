@@ -330,11 +330,27 @@ function verAl(id){
   var a=DB.alumnos.find(function(x){return x.id===id});if(!a)return;
   var pagos=DB.pagos.filter(function(p){return p.alumnoId===id}),cuotas=DB.cuotas.filter(function(c){return c.alumnoId===id});
   var tot=pagos.reduce(function(s,p){return s+p.monto},0),pen=cuotas.reduce(function(s,c){return s+(parseFloat(c.monto)||0)},0);
-  document.getElementById('m-ver-body').innerHTML='<div style="display:flex;align-items:center;gap:16px;margin-bottom:18px">'+avEl(a,64)+'<div><div style="font-size:17px;font-weight:600">'+a.nombre+'</div><div style="font-size:13px;color:#888">'+gCN(a.moduloId,a.nivel)+'</div></div></div>'
+  var avatarHtml=a.foto
+    ?'<img src="'+a.foto+'" onclick="window.zoomFoto(\''+a.foto+'\')" style="width:64px;height:64px;border-radius:50%;object-fit:cover;cursor:zoom-in;transition:transform .2s;box-shadow:0 2px 8px rgba(0,0,0,.15)" onmouseover="this.style.transform=\'scale(1.12)\'" onmouseout="this.style.transform=\'scale(1)\'">'
+    :avEl(a,64);
+  document.getElementById('m-ver-body').innerHTML='<div style="display:flex;align-items:center;gap:16px;margin-bottom:18px">'+avatarHtml+'<div><div style="font-size:17px;font-weight:600">'+a.nombre+'</div><div style="font-size:13px;color:#888">'+gCN(a.moduloId,a.nivel)+'</div></div></div>'
   +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px;margin-bottom:16px"><div><span style="color:#888">Cedula:</span> '+(a.cedula||'-')+'</div><div><span style="color:#888">Tel:</span> '+(a.telefono||'-')+'</div><div><span style="color:#888">Edad:</span> '+(a.edad?a.edad+' anos':'-')+'</div><div><span style="color:#888">RH:</span> '+(a.rh||'-')+'</div><div><span style="color:#888">Ingreso:</span> '+(a.ingreso||'-')+'</div><div><span style="color:#888">Email:</span> '+(a.email||'-')+'</div><div><span style="color:#888">Inicio:</span> '+(a.inicio||'-')+'</div><div><span style="color:#888">Fin:</span> '+(a.fin||'-')+'</div><div style="grid-column:1/-1"><span style="color:#888">Ref:</span> '+(a.referencia||'-')+'</div><div style="grid-column:1/-1"><span style="color:#888">Direccion:</span> '+(a.direccion||'-')+'</div>'+(a.notas?'<div style="grid-column:1/-1"><span style="color:#888">Notas:</span> '+a.notas+'</div>':'')+'</div>'
   +'<div style="display:flex;gap:10px;margin-bottom:10px"><div style="flex:1;background:#f0fdf4;border-radius:8px;padding:8px;text-align:center"><div style="font-size:10px;color:#15803d;font-weight:600">PAGADO</div><div style="font-size:16px;font-weight:700;color:#15803d">$'+tot.toLocaleString('es-CO')+'</div></div><div style="flex:1;background:#fee2e2;border-radius:8px;padding:8px;text-align:center"><div style="font-size:10px;color:#b91c1c;font-weight:600">PENDIENTE</div><div style="font-size:16px;font-weight:700;color:#b91c1c">$'+pen.toLocaleString('es-CO')+'</div></div></div>'
   +(pagos.length?'<div style="max-height:140px;overflow-y:auto;border:.5px solid #f0f0f0;border-radius:8px">'+pagos.map(function(p){return'<div style="display:flex;align-items:center;gap:6px;padding:6px 10px;border-bottom:.5px solid #f5f5f5;font-size:12px"><div style="flex:1">'+(p.periodo||'-')+'</div><div style="font-weight:600">$'+(p.monto||0).toLocaleString('es-CO')+'</div>'+bdg(p.estado)+'<div style="color:#aaa">'+(p.fecha||'-')+'</div></div>'}).join('')+'</div>':'');
   openM('m-ver');
+}
+
+window.zoomFoto=function(src){
+  var ov=document.createElement('div');
+  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.85);display:flex;align-items:center;justify-content:center;z-index:99999;cursor:zoom-out;animation:fadeIn .2s ease';
+  ov.innerHTML='<img src="'+src+'" style="max-width:88vw;max-height:88vh;border-radius:16px;box-shadow:0 8px 40px rgba(0,0,0,.6);object-fit:contain;animation:scaleIn .2s ease">';
+  ov.onclick=function(){ov.style.opacity='0';ov.style.transition='opacity .15s';setTimeout(function(){ov.remove()},150)};
+  if(!document.getElementById('_zoom_styles')){
+    var st=document.createElement('style');st.id='_zoom_styles';
+    st.textContent='@keyframes fadeIn{from{opacity:0}to{opacity:1}}@keyframes scaleIn{from{transform:scale(.85);opacity:0}to{transform:scale(1);opacity:1}}';
+    document.head.appendChild(st);
+  }
+  document.body.appendChild(ov);
 }
 
 window.regPagAl=async function(){
