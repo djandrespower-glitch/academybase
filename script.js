@@ -84,16 +84,20 @@ async function obtenerRol(email) {
 
 function aplicarRol(rol) {
   rolActual = rol;
-  // Ocultar menús solo-admin: pagos, reporte, exportar
-  ['pagos','reporte','exportar'].forEach(function(id) {
-    var el = document.querySelector('.ni[onclick*="\''+id+'\'"]');
+  // Ocultar menús solo-admin: reporte, exportar (pagos/ingresos visible para todos)
+  ['reporte','exportar'].forEach(function(id) {
+    var el = document.querySelector('.ni[onclick*=\"\''+id+'\'\"]');
     if (el) el.style.display = rol === 'admin' ? '' : 'none';
   });
-  // Ocultar stats financieros en dashboard
+  // Ocultar stats financieros en dashboard para asistente
   var sMes = document.getElementById('s-mes');
   var sPen = document.getElementById('s-pen');
   if (sMes) sMes.closest('.sc').style.display = rol === 'admin' ? '' : 'none';
   if (sPen) sPen.closest('.sc').style.display = rol === 'admin' ? '' : 'none';
+  // Cambiar gráfico dashboard según rol
+  var chartTitle = document.getElementById('chart-title');
+  if (chartTitle) chartTitle.textContent = rol === 'admin' ? 'Ingresos 6 meses' : 'Egresos 6 meses';
+  renderChartPorRol(rol);
   // Botón logout
   if (!document.getElementById('_logout_btn')) {
     var btn = document.createElement('button');
@@ -139,11 +143,11 @@ function initApp() {
     poblarSelects(); renderDash();
   });
   listenCol("alumnos",        "alumnos",        function(){ poblarSelects(); renderDash(); if(document.getElementById('page-alumnos').classList.contains('active')) renderAlumnos(); });
-  listenCol("pagos",          "pagos",          function(){ poblarSelectsPag(); renderDash(); if(document.getElementById('page-pagos').classList.contains('active')) renderPagos(); if(eAid) renderHistP(eAid); });
+  listenCol("pagos",          "pagos",          function(){ poblarSelectsPag(); renderDash(); renderChartPorRol(rolActual||'admin'); if(document.getElementById('page-pagos').classList.contains('active')) renderPagos(); if(eAid) renderHistP(eAid); });
   listenCol("cuotas",         "cuotas",         function(){ renderDash(); updBadge(); if(eAid) renderCuotas(); });
   listenCol("asistencias",    "asistencias",    function(){ if(document.getElementById('page-asistencia').classList.contains('active')) renderAsistencia(); });
   listenCol("horario_grupos", "horario_grupos", function(){ if(document.getElementById('page-horarios_aulas').classList.contains('active')) window.renderHorariosPage(); });
-  listenCol("egresos",        "egresos",        function(){ if(document.getElementById('page-egresos').classList.contains('active')) renderEgresos(); renderDash(); });
+  listenCol("egresos",        "egresos",        function(){ if(document.getElementById('page-egresos').classList.contains('active')) renderEgresos(); renderDash(); renderChartPorRol(rolActual||'admin'); });
   listenCol("cat_egreso",     "cat_egreso",     function(){ poblarSelects(); if(document.getElementById('page-egresos').classList.contains('active')) renderEgresos(); });
   listenCol("cat_pag_cur",    "cat_pag_cur",    function(){ poblarSelectsPag(); if(document.getElementById('page-pagos').classList.contains('active')) renderPagos(); });
   listenCol("cat_pag_for",    "cat_pag_for",    function(){ poblarSelectsPag(); if(document.getElementById('page-pagos').classList.contains('active')) renderPagos(); });
@@ -262,15 +266,29 @@ function renderDash(){
   document.getElementById('s-mes').textContent='$'+totM.toLocaleString('es-CO');
   document.getElementById('s-pen').textContent=DB.cuotas.length;
   document.getElementById('s-cur').textContent=DB.cursos.length;
-  var meses=[];for(var i=5;i>=0;i--){var d=new Date(y,m-i,1);meses.push({lbl:d.toLocaleString('es-CO',{month:'short'}),m:d.getMonth(),y:d.getFullYear()})}
-  var tots=meses.map(function(x){return DB.pagos.filter(function(p){if(!p.fecha||p.estado!=='Pagado')return false;var d=new Date(p.fecha);return d.getMonth()===x.m&&d.getFullYear()===x.y}).reduce(function(s,p){return s+p.monto},0)});
-  var mx=Math.max.apply(null,tots.concat([1]));
-  document.getElementById('chart').innerHTML=tots.every(function(t){return t===0})?'<div style="color:#aaa;font-size:13px;text-align:center;padding:20px">Sin abonos</div>':'<div class="cbw">'+meses.map(function(x,i){return'<div class="cbc"><div class="cbv">'+(tots[i]?'$'+Math.round(tots[i]/1000)+'k':'')+'</div><div class="cb" style="height:'+Math.max(4,Math.round(tots[i]/mx*90))+'px"></div><div class="cbl">'+x.lbl+'</div></div>'}).join('')+'</div>';
+  renderChartPorRol(rolActual||'admin');
   var als=calcAlerts();
   document.getElementById('dash-al').innerHTML=!als.length?'<div style="color:#15803d;font-size:13px;text-align:center;padding:20px">Todos al dia!</div>':als.map(function(a){return'<div class="ai" style="background:#fee2e2;border-radius:6px;margin:4px 8px;padding:8px 10px"><span>!</span><span style="font-size:12px;color:#b91c1c;font-weight:600">'+a.t+'</span></div>'}).join('');
   document.getElementById('dash-rec').innerHTML=DB.alumnos.slice(0,4).map(function(a){return'<tr><td><div style="display:flex;align-items:center;gap:8px">'+avEl(a)+'<span>'+a.nombre+'</span></div></td><td>'+gCN(a.moduloId,a.nivel)+'</td><td>'+(a.ingreso||'-')+'</td><td>'+(a.fin||'-')+'</td></tr>'}).join('')||'<tr><td colspan="4" style="text-align:center;color:#aaa;padding:20px">Sin alumnos</td></tr>';
   updBadge();
   if(rolActual) aplicarRol(rolActual);
+}
+
+function renderChartPorRol(rol){
+  var now=new Date(),m=now.getMonth(),y=now.getFullYear();
+  var meses=[];for(var i=5;i>=0;i--){var d=new Date(y,m-i,1);meses.push({lbl:d.toLocaleString('es-CO',{month:'short'}),m:d.getMonth(),y:d.getFullYear()})}
+  var tots;
+  if(rol==='admin'){
+    tots=meses.map(function(x){return DB.pagos.filter(function(p){if(!p.fecha||p.estado!=='Pagado')return false;var d=new Date(p.fecha);return d.getMonth()===x.m&&d.getFullYear()===x.y}).reduce(function(s,p){return s+p.monto},0)});
+  } else {
+    tots=meses.map(function(x){return DB.egresos.filter(function(e){if(!e.fecha)return false;var d=new Date(e.fecha);return d.getMonth()===x.m&&d.getFullYear()===x.y}).reduce(function(s,e){return s+(parseFloat(e.valor)||0)},0)});
+  }
+  var mx=Math.max.apply(null,tots.concat([1]));
+  var chartEl=document.getElementById('chart');
+  if(!chartEl)return;
+  chartEl.innerHTML=tots.every(function(t){return t===0})
+    ?'<div style="color:#aaa;font-size:13px;text-align:center;padding:20px">Sin registros</div>'
+    :'<div class="cbw">'+meses.map(function(x,i){return'<div class="cbc"><div class="cbv">'+(tots[i]?'$'+Math.round(tots[i]/1000)+'k':'')+'</div><div class="cb" style="height:'+Math.max(4,Math.round(tots[i]/mx*90))+'px"></div><div class="cbl">'+x.lbl+'</div></div>'}).join('')+'</div>';
 }
 
 function calcAlerts(){
