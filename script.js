@@ -305,7 +305,7 @@ window.saveAlumno=async function(){
   closeM('m-alumno');
 }
 
-function renderAlumnos(){
+window.renderAlumnos=function renderAlumnos(){
   var q=(document.getElementById('q-al').value||'').toLowerCase(),fc=document.getElementById('f-cur').value;
   var list=DB.alumnos.filter(function(a){if(q&&!a.nombre.toLowerCase().includes(q)&&!(a.cedula||'').includes(q))return false;if(fc&&a.moduloId!==fc)return false;return true});
   var tb=document.getElementById('t-al');
@@ -523,7 +523,7 @@ window.closePagPanel=function(){_selPagId=null;document.getElementById('pag-pane
 window.doPagEdit=function(){var id=_selPagId;closePagPanel();if(id)openMPag(id)}
 window.doPagDel=function(){if(!_selPagId)return;var pid=_selPagId;closePagPanel();confirmDel('Eliminar este pago?',async function(){await fbDel('pagos',pid)})}
 
-function renderPagos(){var q=(document.getElementById('q-pag').value||'').toLowerCase(),fe=document.getElementById('f-epag').value;var list=DB.pagos.filter(function(p){if(fe&&p.estado!==fe)return false;if(q){var nom=gAN(p.alumnoId).toLowerCase();if(!nom.includes(q)&&!(p.periodo||'').toLowerCase().includes(q))return false}return true});document.getElementById('t-pag').innerHTML=list.map(function(p){return'<tr style="cursor:pointer" onclick="selPago(\''+p.id+'\',\''+gAN(p.alumnoId).replace(/'/g,'')+'\')">'+'<td>'+gAN(p.alumnoId)+'</td><td>'+gAC(p.alumnoId)+'</td><td>'+(p.periodo||'-')+'</td><td>'+(p.forma||'-')+'</td><td>$'+(p.monto||0).toLocaleString('es-CO')+'</td><td>'+bdg(p.estado)+'</td><td>'+(p.fecha||'-')+'</td><td><span style="font-size:11px;color:#aaa">ver</span></td></tr>'}).join('')||'<tr><td colspan="8" style="text-align:center;color:#aaa;padding:20px">Sin registros</td></tr>'}
+window.renderPagos=function renderPagos(){var q=(document.getElementById('q-pag').value||'').toLowerCase(),fe=document.getElementById('f-epag').value;var list=DB.pagos.filter(function(p){if(fe&&p.estado!==fe)return false;if(q){var nom=gAN(p.alumnoId).toLowerCase();if(!nom.includes(q)&&!(p.periodo||'').toLowerCase().includes(q))return false}return true});document.getElementById('t-pag').innerHTML=list.map(function(p){return'<tr style="cursor:pointer" onclick="selPago(\''+p.id+'\',\''+gAN(p.alumnoId).replace(/'/g,'')+'\')">'+'<td>'+gAN(p.alumnoId)+'</td><td>'+gAC(p.alumnoId)+'</td><td>'+(p.periodo||'-')+'</td><td>'+(p.forma||'-')+'</td><td>$'+(p.monto||0).toLocaleString('es-CO')+'</td><td>'+bdg(p.estado)+'</td><td>'+(p.fecha||'-')+'</td><td><span style="font-size:11px;color:#aaa">ver</span></td></tr>'}).join('')||'<tr><td colspan="8" style="text-align:center;color:#aaa;padding:20px">Sin registros</td></tr>'}
 
 window.openMAsist=function(){popAl('ma-al');document.getElementById('ma-fec').value=new Date().toISOString().split('T')[0];document.getElementById('ma-not').value='';openM('m-asist')}
 window.saveAsist=async function(){
@@ -533,9 +533,22 @@ window.saveAsist=async function(){
 }
 window.delAsist=async function(id){await fbDel('asistencias',id);renderAsistencia()}
 
-function renderAsistencia(){var fAl=document.getElementById('q-asist-al').value,fF=document.getElementById('q-asist-f').value;var list=DB.asistencias.filter(function(x){if(fAl&&x.alumnoId!==fAl)return false;if(fF&&x.fecha!==fF)return false;return true});document.getElementById('t-asist').innerHTML=list.map(function(x){return'<tr><td>'+gAN(x.alumnoId)+'</td><td>'+gAC(x.alumnoId)+'</td><td>'+(x.fecha||'-')+'</td><td>'+bdg(x.estado)+'</td><td>'+(x.notes||'-')+'</td><td><button class="btn bd bsm" onclick="delAsist(\''+x.id+'\')">X</button></td></tr>'}).join('')||'<tr><td colspan="6" style="text-align:center;color:#aaa;padding:20px">Sin registros</td></tr>'}
+window.renderAsistencia=function renderAsistencia(){
+  var fAl=document.getElementById('q-asist-al').value,fF=document.getElementById('q-asist-f').value;
+  var list=DB.asistencias.filter(function(x){if(fAl&&x.alumnoId!==fAl)return false;if(fF&&x.fecha!==fF)return false;return true});
+  document.getElementById('t-asist').innerHTML=list.map(function(x){return'<tr><td>'+gAN(x.alumnoId)+'</td><td>'+gAC(x.alumnoId)+'</td><td>'+(x.fecha||'-')+'</td><td>'+bdg(x.estado)+'</td><td>'+(x.notes||'-')+'</td><td><button class="btn bd bsm" onclick="delAsist(\''+x.id+'\')">X</button></td></tr>'}).join('')||'<tr><td colspan="6" style="text-align:center;color:#aaa;padding:20px">Sin registros</td></tr>';
+}
 
-function renderReporte(){var fAl=document.getElementById('r-al').value,fCur=document.getElementById('r-cur').value,fEst=document.getElementById('r-est').value,fMes=document.getElementById('r-mes').value;var list=DB.pagos.filter(function(p){if(fAl&&p.alumnoId!==fAl)return false;if(fCur){var a=gA(p.alumnoId);if(!a||a.moduloId!==fCur)return false}if(fEst&&p.estado!==fEst)return false;if(fMes&&p.fecha&&p.fecha.slice(0,7)!==fMes)return false;return true});var rev=list.filter(function(p){return p.estado==='Pagado'}).reduce(function(s,p){return s+p.monto},0);var pen=DB.cuotas.reduce(function(s,c){return s+parseFloat(c.monto||0)},0);document.getElementById('r-tot').textContent='$'+rev.toLocaleString('es-CO');document.getElementById('r-pen').textContent='$'+pen.toLocaleString('es-CO');document.getElementById('r-cnt').textContent=list.length;document.getElementById('t-rep').innerHTML=list.map(function(p){return'<tr><td>'+gAN(p.alumnoId)+'</td><td>'+gAC(p.alumnoId)+'</td><td>'+(p.periodo||'-')+'</td><td>'+(p.forma||'-')+'</td><td>$'+(p.monto||0).toLocaleString('es-CO')+'</td><td>'+bdg(p.estado)+'</td><td>'+(p.fecha||'-')+'</td></tr>'}).join('')||'<tr><td colspan="7" style="text-align:center;color:#aaa;padding:20px">Sin registros</td></tr>'}
+window.renderReporte=function renderReporte(){
+  var fAl=document.getElementById('r-al').value,fCur=document.getElementById('r-cur').value,fEst=document.getElementById('r-est').value,fMes=document.getElementById('r-mes').value;
+  var list=DB.pagos.filter(function(p){if(fAl&&p.alumnoId!==fAl)return false;if(fCur){var a=gA(p.alumnoId);if(!a||a.moduloId!==fCur)return false}if(fEst&&p.estado!==fEst)return false;if(fMes&&p.fecha&&p.fecha.slice(0,7)!==fMes)return false;return true});
+  var rev=list.filter(function(p){return p.estado==='Pagado'}).reduce(function(s,p){return s+p.monto},0);
+  var pen=DB.cuotas.reduce(function(s,c){return s+parseFloat(c.monto||0)},0);
+  document.getElementById('r-tot').textContent='$'+rev.toLocaleString('es-CO');
+  document.getElementById('r-pen').textContent='$'+pen.toLocaleString('es-CO');
+  document.getElementById('r-cnt').textContent=list.length;
+  document.getElementById('t-rep').innerHTML=list.map(function(p){return'<tr><td>'+gAN(p.alumnoId)+'</td><td>'+gAC(p.alumnoId)+'</td><td>'+(p.periodo||'-')+'</td><td>'+(p.forma||'-')+'</td><td>$'+(p.monto||0).toLocaleString('es-CO')+'</td><td>'+bdg(p.estado)+'</td><td>'+(p.fecha||'-')+'</td></tr>'}).join('')||'<tr><td colspan="7" style="text-align:center;color:#aaa;padding:20px">Sin registros</td></tr>';
+}
 window.printRep=function(){var t=document.getElementById('rep-wrap');var w=window.open('','_blank');w.document.write('<!DOCTYPE html><html><head><title>Reporte</title><style>body{font-family:system-ui;font-size:13px}table{width:100%;border-collapse:collapse}th,td{padding:8px;border:1px solid #ddd;text-align:left}th{background:#f0f0f0}</style></head><body><h2>Reporte Financiero - Deejay Academy</h2>'+t.innerHTML+'</body></html>');w.document.close();w.print()}
 
 window.initHorariosPage=function(){
