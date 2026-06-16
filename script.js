@@ -54,7 +54,7 @@ function mostrarLogin(error) {
       + '<input id="_lemail" type="email" placeholder="Correo electronico" style="width:100%;padding:10px 14px;border:1.5px solid #e0e0e0;border-radius:10px;font-size:14px;outline:none;margin-bottom:10px">'
       + '<input id="_lpwd" type="password" placeholder="Contrasena" style="width:100%;padding:10px 14px;border:1.5px solid #e0e0e0;border-radius:10px;font-size:14px;outline:none;margin-bottom:12px">'
       + '<div id="_lerr" style="color:#b91c1c;font-size:12px;min-height:18px;margin-bottom:8px"></div>'
-      + '<button onclick="doLogin()" style="width:100%;padding:11px;background:#e8c547;color:#1a1a2e;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer">Entrar</button>'
+      + '<button onclick="doLogin()" style="width:100%;padding:11px;background:#c0392b;color:#1a1a2e;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer">Entrar</button>'
       + '</div>';
     document.body.appendChild(ov);
     document.getElementById('_lpwd').addEventListener('keydown', function(e){ if(e.key==='Enter') window.doLogin(); });
@@ -191,7 +191,7 @@ function confirmDel(msg,cb){
     +'<div style="font-size:14px;font-weight:500;margin-bottom:20px">'+msg+'</div>'
     +'<div style="display:flex;gap:10px;justify-content:center">'
     +'<button id="_cdn" style="padding:8px 20px;border-radius:8px;border:1px solid #ddd;background:#fff;cursor:pointer;font-size:13px">Cancelar</button>'
-    +'<button id="_cds" style="padding:8px 20px;border-radius:8px;border:none;background:#e8c547;color:#1a1a2e;cursor:pointer;font-size:13px;font-weight:600">Confirmar</button>'
+    +'<button id="_cds" style="padding:8px 20px;border-radius:8px;border:none;background:#c0392b;color:#1a1a2e;cursor:pointer;font-size:13px;font-weight:600">Confirmar</button>'
     +'</div></div>';
   document.body.appendChild(ov);
   document.getElementById('_cdn').onclick=function(){ov.remove()};
@@ -515,7 +515,7 @@ async function updCurso(id){
 }
 window.delCurso=function(id){confirmDel('Eliminar este curso?',async function(){await fbDel('cursos',id)})}
 function renderCursos(){var el=document.getElementById('cursos-lista');if(!el)return;if(!DB.cursos.length){el.innerHTML='<p style="color:#aaa;padding:20px">Sin cursos.</p>';return}el.innerHTML=DB.cursos.map(function(c){var cnt=DB.alumnos.filter(function(a){return a.moduloId===c.id}).length;return'<div class="cc"><div style="display:flex;justify-content:space-between;gap:10px"><div><h4 style="margin-bottom:4px">'+c.nombre+'</h4>'+(c.desc?'<div style="font-size:12px;color:#888;margin-bottom:6px">'+c.desc+'</div>':'')+'<div class="ll">'+(c.niveles||[]).map(function(n){return'<span class="bdg bb">'+n+'</span>'}).join('')+'</div><div style="font-size:11px;color:#888;margin-top:6px">'+cnt+' alumno(s)</div></div><div style="display:flex;gap:6px;flex-shrink:0"><button class="btn bo bsm" onclick="openMCur(\''+c.id+'\')">Editar</button><button class="btn bd bsm" onclick="delCurso(\''+c.id+'\')">X</button></div></div></div>'}).join('')}
-function renderGantt(){var el=document.getElementById('gantt-c');var cf=DB.cursos.filter(function(c){return c.inicio&&c.fin});if(!cf.length){el.innerHTML='<div style="color:#aaa;padding:20px;text-align:center">Agrega fechas a los cursos.</div>';return}var minD=new Date(Math.min.apply(null,cf.map(function(c){return new Date(c.inicio)}))),maxD=new Date(Math.max.apply(null,cf.map(function(c){return new Date(c.fin)})));var total=maxD-minD||1;el.innerHTML=cf.map(function(c){var s=(new Date(c.inicio)-minD)/total*100,w=(new Date(c.fin)-new Date(c.inicio))/total*100;return'<div style="margin-bottom:10px"><div style="font-size:12px;font-weight:500;margin-bottom:4px">'+c.nombre+'</div><div style="background:#f0f0f0;border-radius:4px;height:24px;position:relative"><div style="position:absolute;left:'+s+'%;width:'+Math.max(w,2)+'%;background:#e8c547;height:100%;border-radius:4px;display:flex;align-items:center;padding:0 6px;font-size:11px;font-weight:600;color:#1a1a2e;overflow:hidden;white-space:nowrap">'+c.nombre+'</div></div></div>'}).join('')}
+function renderGantt(){var el=document.getElementById('gantt-c');var cf=DB.cursos.filter(function(c){return c.inicio&&c.fin});if(!cf.length){el.innerHTML='<div style="color:#aaa;padding:20px;text-align:center">Agrega fechas a los cursos.</div>';return}var minD=new Date(Math.min.apply(null,cf.map(function(c){return new Date(c.inicio)}))),maxD=new Date(Math.max.apply(null,cf.map(function(c){return new Date(c.fin)})));var total=maxD-minD||1;el.innerHTML=cf.map(function(c){var s=(new Date(c.inicio)-minD)/total*100,w=(new Date(c.fin)-new Date(c.inicio))/total*100;return'<div style="margin-bottom:10px"><div style="font-size:12px;font-weight:500;margin-bottom:4px">'+c.nombre+'</div><div style="background:#f0f0f0;border-radius:4px;height:24px;position:relative"><div style="position:absolute;left:'+s+'%;width:'+Math.max(w,2)+'%;background:#c0392b;height:100%;border-radius:4px;display:flex;align-items:center;padding:0 6px;font-size:11px;font-weight:600;color:#1a1a2e;overflow:hidden;white-space:nowrap">'+c.nombre+'</div></div></div>'}).join('')}
 
 // ── PAGOS ─────────────────────────────────────────────────
 window.openMPag=function(id){
@@ -705,7 +705,7 @@ window.renderHorariosPage=function(){
   var fIni=curso&&curso['fechas_mes_'+mesAct+'_inicio']||'';
   var fFin=curso&&curso['fechas_mes_'+mesAct+'_fin']||'';
   var mesOpts=MESES_N.map(function(m,i){return'<option value="'+i+'" '+(i==mesAct?'selected':'')+'>'+m.toUpperCase()+'</option>'}).join('');
-  var tabs=DB.cursos.map(function(c){var act=c.id===cursoAct;return'<button onclick="window.hCursoTab=\''+c.id+'\';window.renderHorariosPage()" style="padding:6px 16px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:600;border:none;background:'+(act?'#e8c547':'#1f2937')+';color:'+(act?'#111':'#9ca3af')+'">'+c.nombre+'</button>'}).join('');
+  var tabs=DB.cursos.map(function(c){var act=c.id===cursoAct;return'<button onclick="window.hCursoTab=\''+c.id+'\';window.renderHorariosPage()" style="padding:6px 16px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:600;border:none;background:'+(act?'#c0392b':'#1f2937')+';color:'+(act?'#111':'#9ca3af')+'">'+c.nombre+'</button>'}).join('');
   var gridHtml='';
   if(!niveles.length){
     gridHtml='<div style="color:#6b7280;text-align:center;padding:40px">Este curso no tiene niveles.</div>';
@@ -719,7 +719,7 @@ window.renderHorariosPage=function(){
           var noms=(g.alumnos||[]).map(function(aid){return gAN(aid)}).filter(function(x){return x&&x!=='-'}).join('<br>');
           return'<div onclick="window.editGrupo(\''+g.id+'\')" style="border-radius:10px;padding:8px 10px;margin-bottom:6px;position:relative;background:rgba(255,255,255,.09);border:1px solid rgba(255,255,255,.15);cursor:pointer">'
             +'<button onclick="event.stopPropagation();window.delGrupo(\''+g.id+'\')" style="position:absolute;top:4px;right:4px;background:#c0392b;border:none;border-radius:50%;width:18px;height:18px;font-size:10px;cursor:pointer;color:#fff;line-height:18px;text-align:center;padding:0">x</button>'
-            +(g.instructor?'<div style="font-size:11px;font-weight:700;color:#e8c547;background:rgba(0,0,0,.3);border-radius:5px;padding:2px 7px;display:inline-block;margin-bottom:5px">'+g.instructor+'</div>':'')
+            +(g.instructor?'<div style="font-size:11px;font-weight:700;color:#c0392b;background:rgba(0,0,0,.3);border-radius:5px;padding:2px 7px;display:inline-block;margin-bottom:5px">'+g.instructor+'</div>':'')
             +'<div style="color:#e5e7eb;font-size:12px;line-height:1.7">'+(noms||'<span style="color:#6b7280;font-size:11px">Sin alumnos</span>')+'</div>'
             +(g.fechaIni&&g.fechaFin?'<div style="font-size:10px;font-weight:700;color:#f87171;margin-top:5px">'+fmtF(g.fechaIni)+' - '+fmtF(g.fechaFin)+'</div>':'')
             +'</div>';
@@ -728,7 +728,7 @@ window.renderHorariosPage=function(){
       }).join('');
       return'<tr><td style="color:#9ca3af;font-size:12px;font-weight:600;vertical-align:top;padding:12px 10px 0 2px;white-space:nowrap;width:75px">'+fr+'</td>'+tds+'</tr>';
     }).join('');
-    gridHtml='<div style="color:#e8c547;font-size:13px;font-weight:700;margin-bottom:10px;letter-spacing:1px">'+MESES_N[mesAct].toUpperCase()+'</div>'
+    gridHtml='<div style="color:#c0392b;font-size:13px;font-weight:700;margin-bottom:10px;letter-spacing:1px">'+MESES_N[mesAct].toUpperCase()+'</div>'
       +'<div style="overflow-x:auto"><table style="border-collapse:separate;border-spacing:5px;width:100%"><thead><tr><th style="width:75px"></th>'+ths+'</tr></thead><tbody>'+rows+'</tbody></table></div>';
   }
   document.getElementById('horarios-root').innerHTML=
