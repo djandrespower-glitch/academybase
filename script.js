@@ -31,7 +31,7 @@ async function fbUpd(col, id, data) { await updateDoc(doc(db, col, id), {...data
 async function fbSet(col, id, data) { await setDoc(doc(db, col, id), {...data, _ts: serverTimestamp()}, {merge:true}); }
 async function fbDel(col, id) { await deleteDoc(doc(db, col, id)); }
 
-var DB = { alumnos:[], pagos:[], cuotas:[], asistencias:[], cursos:[], horario_grupos:[], aulas_vinculados:[] };
+var DB = { alumnos:[], pagos:[], cuotas:[], asistencias:[], cursos:[], horario_grupos:[], egresos:[], cat_egreso:[] };
 
 function listenCol(col, key, cb) {
   const q = query(collection(db, col), orderBy("_ts", "desc"));
@@ -41,6 +41,7 @@ function listenCol(col, key, cb) {
   }, err => console.warn("Firestore ["+col+"]:", err));
 }
 
+// ── LOGIN ──────────────────────────────────────────────────
 function mostrarLogin(error) {
   var ov = document.getElementById('_login');
   if (!ov) {
@@ -83,14 +84,17 @@ async function obtenerRol(email) {
 
 function aplicarRol(rol) {
   rolActual = rol;
+  // Ocultar menús solo-admin: pagos, reporte, exportar
   ['pagos','reporte','exportar'].forEach(function(id) {
     var el = document.querySelector('.ni[onclick*="\''+id+'\'"]');
     if (el) el.style.display = rol === 'admin' ? '' : 'none';
   });
+  // Ocultar stats financieros en dashboard
   var sMes = document.getElementById('s-mes');
   var sPen = document.getElementById('s-pen');
   if (sMes) sMes.closest('.sc').style.display = rol === 'admin' ? '' : 'none';
   if (sPen) sPen.closest('.sc').style.display = rol === 'admin' ? '' : 'none';
+  // Botón logout
   if (!document.getElementById('_logout_btn')) {
     var btn = document.createElement('button');
     btn.id = '_logout_btn'; btn.className = 'btn bo bsm';
@@ -99,35 +103,47 @@ function aplicarRol(rol) {
   }
 }
 
+// ── POBLAR SELECTS ────────────────────────────────────────
 function poblarSelects(){
-  // f-cur (alumnos)
   var fCur=document.getElementById('f-cur');
   if(fCur){var pv=fCur.value;fCur.innerHTML='<option value="">Todos los cursos</option>';DB.cursos.forEach(function(c){fCur.innerHTML+='<option value="'+c.id+'">'+c.nombre+'</option>'});fCur.value=pv;}
-  // q-asist-al (asistencia)
   var qAl=document.getElementById('q-asist-al');
   if(qAl){var pv2=qAl.value;qAl.innerHTML='<option value="">Todos</option>';DB.alumnos.forEach(function(a){qAl.innerHTML+='<option value="'+a.id+'">'+a.nombre+'</option>'});qAl.value=pv2;}
-  // r-al (reporte alumnos)
   var rAl=document.getElementById('r-al');
   if(rAl){var pv3=rAl.value;rAl.innerHTML='<option value="">Todos los alumnos</option>';DB.alumnos.forEach(function(a){rAl.innerHTML+='<option value="'+a.id+'">'+a.nombre+'</option>'});rAl.value=pv3;}
-  // r-cur (reporte cursos)
   var rCur=document.getElementById('r-cur');
   if(rCur){var pv4=rCur.value;rCur.innerHTML='<option value="">Todos los cursos</option>';DB.cursos.forEach(function(c){rCur.innerHTML+='<option value="'+c.id+'">'+c.nombre+'</option>'});rCur.value=pv4;}
+  // Select categorías egreso en formulario
+  poblarCatEgreso('me-cat');
+  poblarCatEgreso('fe-cat');
 }
 
+function poblarCatEgreso(sid){
+  var s=document.getElementById(sid);if(!s)return;
+  var pv=s.value;
+  s.innerHTML='<option value="">Seleccionar categoría...</option>';
+  DB.cat_egreso.slice().sort(function(a,b){return(a.nombre||'').localeCompare(b.nombre||'')}).forEach(function(c){
+    s.innerHTML+='<option value="'+c.nombre+'">'+c.nombre+'</option>';
+  });
+  if(pv)s.value=pv;
+}
+
+// ── INIT APP ──────────────────────────────────────────────
 function initApp() {
   listenCol("cursos", "cursos", function() {
     if (DB.cursos.length === 0) {
       fbSet("cursos","djpro",{nombre:"Mezclas DJ Pro",niveles:["Essential","Pro","DJ Master Pro"],desc:"Modulo de mezcla DJ profesional",inicio:"",fin:""});
       fbSet("cursos","prod", {nombre:"Produccion Musical",niveles:["Nivel 1","Nivel 2","Nivel 3","Nivel 4"],desc:"Produccion con Ableton Live",inicio:"",fin:""});
     }
-    poblarSelects();
-    renderDash();
+    poblarSelects(); renderDash();
   });
   listenCol("alumnos",        "alumnos",        function(){ poblarSelects(); renderDash(); if(document.getElementById('page-alumnos').classList.contains('active')) renderAlumnos(); });
   listenCol("pagos",          "pagos",          function(){ renderDash(); if(document.getElementById('page-pagos').classList.contains('active')) renderPagos(); if(eAid) renderHistP(eAid); });
   listenCol("cuotas",         "cuotas",         function(){ renderDash(); updBadge(); if(eAid) renderCuotas(); });
   listenCol("asistencias",    "asistencias",    function(){ if(document.getElementById('page-asistencia').classList.contains('active')) renderAsistencia(); });
   listenCol("horario_grupos", "horario_grupos", function(){ if(document.getElementById('page-horarios_aulas').classList.contains('active')) window.renderHorariosPage(); });
+  listenCol("egresos",        "egresos",        function(){ if(document.getElementById('page-egresos').classList.contains('active')) renderEgresos(); renderDash(); });
+  listenCol("cat_egreso",     "cat_egreso",     function(){ poblarSelects(); if(document.getElementById('page-egresos').classList.contains('active')) renderEgresos(); });
 }
 
 window.addEventListener("DOMContentLoaded", function() {
@@ -144,13 +160,14 @@ window.addEventListener("DOMContentLoaded", function() {
   });
 });
 
-var eAid=null, ePid=null, eCid=null, foto=null;
+// ── GLOBALS ───────────────────────────────────────────────
+var eAid=null, ePid=null, eCid=null, eEid=null, foto=null;
 var hMes=new Date().getMonth(), hCursoTab=null;
 window.hMes=hMes; window.hCursoTab=hCursoTab;
 var FRANJAS_H=["9-11 AM","11-1 PM","2-4 PM","4-6 PM","6-8 PM"];
 var MESES_N=["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
 var HCOLORS=["#3b3210","#0f2d1a","#2d0f1f","#0a1f2d","#1a0f30","#2d1a08"];
-var _selAlId=null, _selPagId=null;
+var _selAlId=null, _selPagId=null, _selEgId=null;
 
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,5)}
 function openM(id){document.getElementById(id).classList.add('show')}
@@ -208,12 +225,13 @@ window.prevFoto=function(ev){
   };r.readAsDataURL(f);
 }
 
+// ── NAVEGACIÓN ────────────────────────────────────────────
 window.showPage=function(id,el){
   document.querySelectorAll('.page').forEach(function(p){p.classList.remove('active')});
   document.querySelectorAll('.ni').forEach(function(n){n.classList.remove('active')});
   document.getElementById('page-'+id).classList.add('active');
   if(el)el.classList.add('active');
-  var T={dashboard:'Dashboard',alertas:'Alertas',alumnos:'Alumnos',cursos:'Cursos',asistencia:'Asistencia',pagos:'Pagos',reporte:'Reportes',horarios_aulas:'Horarios por Cursos',exportar:'Exportar Base'};
+  var T={dashboard:'Dashboard',alertas:'Alertas',alumnos:'Alumnos',cursos:'Cursos',asistencia:'Asistencia',pagos:'Pagos',egresos:'Egresos',reporte:'Reportes',horarios_aulas:'Horarios por Cursos',exportar:'Exportar Base'};
   document.getElementById('page-title').textContent=T[id]||id;
   var ac=document.getElementById('topbar-acts');
   var logoutBtn=document.getElementById('_logout_btn');
@@ -221,15 +239,17 @@ window.showPage=function(id,el){
   if(id==='alumnos')ac.innerHTML='<button class="btn bp bsm" onclick="openMAl()">+ Nuevo alumno</button>';
   if(id==='pagos')ac.innerHTML='<button class="btn bp bsm" onclick="openMPag()">+ Registrar pago</button>';
   if(id==='cursos')ac.innerHTML='<button class="btn bp bsm" onclick="openMCur()">+ Nuevo curso</button>';
+  if(id==='egresos')ac.innerHTML='<button class="btn bp bsm" onclick="openMEg()">+ Nuevo egreso</button>';
   if(logoutBtn){ac.appendChild(logoutBtn)}
   else if(rolActual){
     var btn=document.createElement('button');btn.id='_logout_btn';btn.className='btn bo bsm';
     btn.textContent='Cerrar sesion';btn.onclick=window.doLogout;ac.appendChild(btn);
   }
-  var fns={dashboard:renderDash,alertas:renderAlertas,alumnos:renderAlumnos,cursos:renderCursos,pagos:renderPagos,reporte:renderReporte,asistencia:renderAsistencia,horarios_aulas:window.initHorariosPage,exportar:function(){}};
+  var fns={dashboard:renderDash,alertas:renderAlertas,alumnos:renderAlumnos,cursos:renderCursos,pagos:renderPagos,egresos:renderEgresos,reporte:renderReporte,asistencia:renderAsistencia,horarios_aulas:window.initHorariosPage,exportar:function(){}};
   if(fns[id])fns[id]();
 }
 
+// ── DASHBOARD ─────────────────────────────────────────────
 function renderDash(){
   var now=new Date(),m=now.getMonth(),y=now.getFullYear();
   var totM=DB.pagos.filter(function(p){if(!p.fecha||p.estado!=='Pagado')return false;var d=new Date(p.fecha);return d.getMonth()===m&&d.getFullYear()===y}).reduce(function(s,p){return s+p.monto},0);
@@ -269,6 +289,7 @@ function renderAlertas(){
   updBadge();
 }
 
+// ── ALUMNOS ───────────────────────────────────────────────
 window.openMAl=function(id){
   id=id||null;eAid=id;foto=null;
   document.getElementById('ph-img').style.display='none';document.getElementById('ph-icon').style.display='';
@@ -373,7 +394,6 @@ window.delPagoHist=function(id){confirmDel('Eliminar este abono?',async function
 window.delPagoM=function(){if(!ePid)return;var pid=ePid;confirmDel('Eliminar este pago?',async function(){await fbDel('pagos',pid);closeM('m-pago');})}
 
 var _nuevaCuota=null;
-
 window.addCuota=function(){
   if(!eAid){alert('Guarda el alumno primero.');return}
   _nuevaCuota={descripcion:'',monto:'',vencimiento:'',forma:'Efectivo'};
@@ -389,9 +409,7 @@ window.generarCuota=async function(){
   if(!mon){alert('Ingresa el monto.');return}
   if(!fec){alert('Ingresa la fecha de vencimiento.');return}
   await fbAdd('cuotas',{alumnoId:eAid,descripcion:desc,monto:mon,vencimiento:fec,forma:forma,creado:new Date().toISOString().split('T')[0]});
-  _nuevaCuota=null;
-  renderCuotas();
-  renderHistP(eAid);
+  _nuevaCuota=null; renderCuotas(); renderHistP(eAid);
 }
 
 function renderCuotas(){
@@ -417,64 +435,52 @@ function renderCuotas(){
     html+='<button class="btn bp bsm" onclick="generarCuota()">Generar alerta</button>';
     html+='</div></div>';
   }
-  if(!cuotas.length&&!_nuevaCuota){
-    html+='<div style="color:#aaa;font-size:12px;padding:6px">Sin cuotas pendientes.</div>';
-  }
+  if(!cuotas.length&&!_nuevaCuota){ html+='<div style="color:#aaa;font-size:12px;padding:6px">Sin cuotas pendientes.</div>'; }
   cuotas.forEach(function(c){
     var dias=c.vencimiento?dR(c.vencimiento):null;
     var colV=dias===null?'#888':dias<=0?'#b91c1c':dias<=7?'#a16207':'#15803d';
     var txtV=dias===null?'Sin fecha':dias<=0?'VENCIDA hace '+Math.abs(dias)+' dia(s)':'Vence en '+dias+' dia(s)';
     html+='<div style="background:#fffdf0;border:1px solid #fde68a;border-radius:8px;padding:10px;margin-bottom:8px">';
-   html+='<div style="display:grid;grid-template-columns:1fr 100px;gap:6px;margin-bottom:6px">';
-   html+='<input id="_ec_desc_'+c.id+'" style="font-size:12px;padding:5px 8px;border:1px solid #e0e0e0;border-radius:6px" placeholder="Concepto" value="'+(c.descripcion||'').replace(/"/g,'&quot;')+'">';
-   html+='<input id="_ec_mon_'+c.id+'" type="number" style="font-size:12px;padding:5px 8px;border:1px solid #e0e0e0;border-radius:6px" placeholder="Monto" value="'+(c.monto||'')+'">';
-   html+='</div>';
-html+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px">';
-html+='<div><div style="font-size:10px;color:#888;margin-bottom:2px">Fecha vencimiento</div>';
-html+='<input id="_ec_fec_'+c.id+'" type="date" style="font-size:12px;padding:5px 8px;border:1px solid #e0e0e0;border-radius:6px;width:100%" value="'+(c.vencimiento||'')+'"></div>';
-html+='<div><div style="font-size:10px;color:#888;margin-bottom:2px">Forma de cobro</div>';
-html+='<select id="_ec_for_'+c.id+'" style="font-size:12px;padding:5px 8px;border:1px solid #e0e0e0;border-radius:6px;width:100%">';
-html+='<option value="Efectivo" '+(c.forma==='Efectivo'?'selected':'')+'>Efectivo</option>';
-html+='<option value="Llave" '+(c.forma==='Llave'?'selected':'')+'>Llave</option>';
-html+='<option value="Tarjeta" '+(c.forma==='Tarjeta'?'selected':'')+'>Tarjeta</option>';
-html+='</select></div></div>';
-html+='<div style="display:flex;align-items:center;justify-content:space-between">';
-html+='<span style="font-size:11px;font-weight:600;color:'+colV+'">'+txtV+'</span>';
-html+='<div style="display:flex;gap:6px">';
-html+='<button class="btn bp bsm" data-cid="'+c.id+'" onclick="guardarCuotaEdit(this.dataset.cid)">Guardar</button>';
-html+='<button class="btn bs bsm" data-cid="'+c.id+'" onclick="cobrarCuota(this.dataset.cid)">Cobrar</button>';
-html+='<button class="btn bd bsm" data-cid="'+c.id+'" onclick="delCuota(this.dataset.cid)">Eliminar</button>';
-html+='</div></div></div>';
+    html+='<div style="display:grid;grid-template-columns:1fr 100px;gap:6px;margin-bottom:6px">';
+    html+='<input id="_ec_desc_'+c.id+'" style="font-size:12px;padding:5px 8px;border:1px solid #e0e0e0;border-radius:6px" placeholder="Concepto" value="'+(c.descripcion||'').replace(/"/g,'&quot;')+'">';
+    html+='<input id="_ec_mon_'+c.id+'" type="number" style="font-size:12px;padding:5px 8px;border:1px solid #e0e0e0;border-radius:6px" placeholder="Monto" value="'+(c.monto||'')+'">';
+    html+='</div>';
+    html+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px">';
+    html+='<div><div style="font-size:10px;color:#888;margin-bottom:2px">Fecha vencimiento</div>';
+    html+='<input id="_ec_fec_'+c.id+'" type="date" style="font-size:12px;padding:5px 8px;border:1px solid #e0e0e0;border-radius:6px;width:100%" value="'+(c.vencimiento||'')+'"></div>';
+    html+='<div><div style="font-size:10px;color:#888;margin-bottom:2px">Forma de cobro</div>';
+    html+='<select id="_ec_for_'+c.id+'" style="font-size:12px;padding:5px 8px;border:1px solid #e0e0e0;border-radius:6px;width:100%">';
+    html+='<option value="Efectivo" '+(c.forma==='Efectivo'?'selected':'')+'>Efectivo</option>';
+    html+='<option value="Llave" '+(c.forma==='Llave'?'selected':'')+'>Llave</option>';
+    html+='<option value="Tarjeta" '+(c.forma==='Tarjeta'?'selected':'')+'>Tarjeta</option>';
+    html+='</select></div></div>';
+    html+='<div style="display:flex;align-items:center;justify-content:space-between">';
+    html+='<span style="font-size:11px;font-weight:600;color:'+colV+'">'+txtV+'</span>';
+    html+='<div style="display:flex;gap:6px">';
+    html+='<button class="btn bp bsm" data-cid="'+c.id+'" onclick="guardarCuotaEdit(this.dataset.cid)">Guardar</button>';
+    html+='<button class="btn bs bsm" data-cid="'+c.id+'" onclick="cobrarCuota(this.dataset.cid)">Cobrar</button>';
+    html+='<button class="btn bd bsm" data-cid="'+c.id+'" onclick="delCuota(this.dataset.cid)">Eliminar</button>';
+    html+='</div></div></div>';
   });
   el.innerHTML=html;
 }
 
 window.updCuota=async function(id,f,v){await fbUpd('cuotas',id,{[f]:v})}
-window.guardarCuotaEdit = async function(id) {
-  var desc = document.getElementById('_ec_desc_'+id).value.trim();
-  var mon  = parseFloat(document.getElementById('_ec_mon_'+id).value);
-  var fec  = document.getElementById('_ec_fec_'+id).value;
-  var forma = document.getElementById('_ec_for_'+id).value;
-  if (!desc) { alert('Ingresa el concepto.'); return; }
-  if (!mon)  { alert('Ingresa el monto.'); return; }
-  await fbUpd('cuotas', id, { descripcion: desc, monto: mon, vencimiento: fec, forma: forma });
-  renderCuotas();
-  renderHistP(eAid);
+window.guardarCuotaEdit=async function(id){
+  var desc=document.getElementById('_ec_desc_'+id).value.trim();
+  var mon=parseFloat(document.getElementById('_ec_mon_'+id).value);
+  var fec=document.getElementById('_ec_fec_'+id).value;
+  var forma=document.getElementById('_ec_for_'+id).value;
+  if(!desc){alert('Ingresa el concepto.');return}
+  if(!mon){alert('Ingresa el monto.');return}
+  await fbUpd('cuotas',id,{descripcion:desc,monto:mon,vencimiento:fec,forma:forma});
+  renderCuotas(); renderHistP(eAid);
 }
-
-window.delCuota=function(id){
-  confirmDel('Eliminar esta cuota pendiente?',async function(){
-    await fbDel('cuotas',id);
-    if(eAid)renderHistP(eAid);
-  });
-}
-
+window.delCuota=function(id){confirmDel('Eliminar esta cuota pendiente?',async function(){await fbDel('cuotas',id);if(eAid)renderHistP(eAid);})}
 window.cobrarCuota=function(id){
-  var c=DB.cuotas.find(function(x){return x.id===id});
-  if(!c)return;
+  var c=DB.cuotas.find(function(x){return x.id===id});if(!c)return;
   if(!parseFloat(c.monto)){alert('Ingresa el monto antes de cobrar.');return}
-  var desc=c.descripcion||'Cuota';
-  var m=parseFloat(c.monto).toLocaleString('es-CO');
+  var desc=c.descripcion||'Cuota';var m=parseFloat(c.monto).toLocaleString('es-CO');
   confirmDel('Confirmar cobro de $'+m+' por: '+desc,async function(){
     var hoy=new Date().toISOString().split('T')[0];
     await fbAdd('pagos',{alumnoId:c.alumnoId,periodo:desc,forma:c.forma||'Efectivo',monto:parseFloat(c.monto),estado:'Pagado',fecha:hoy,creado:hoy});
@@ -483,6 +489,7 @@ window.cobrarCuota=function(id){
   });
 }
 
+// ── CURSOS ────────────────────────────────────────────────
 var ctab='lista';
 window.swCT=function(tab,el){ctab=tab;document.querySelectorAll('#page-cursos .tab').forEach(function(t){t.classList.remove('active')});el.classList.add('active');document.getElementById('ct-lista').style.display=tab==='lista'?'block':'none';document.getElementById('ct-gantt').style.display=tab==='gantt'?'block':'none';if(tab==='gantt')renderGantt();else renderCursos()}
 
@@ -494,27 +501,23 @@ window.openMCur=function(id){
   document.getElementById('mc-btn').onclick=id?function(){updCurso(id)}:saveCurso;
   openM('m-curso');
 }
-
 window.saveCurso=async function(){
   var nom=document.getElementById('mc-nom').value.trim();if(!nom){alert('Nombre requerido.');return}
   var niv=document.getElementById('mc-niv').value.trim();
   await fbAdd('cursos',{nombre:nom,niveles:niv?niv.split(',').map(function(n){return n.trim()}).filter(Boolean):[],desc:document.getElementById('mc-des').value.trim(),inicio:document.getElementById('mc-ini').value,fin:document.getElementById('mc-fin').value});
   closeM('m-curso');
 }
-
 async function updCurso(id){
   var nom=document.getElementById('mc-nom').value.trim();if(!nom){alert('Nombre requerido.');return}
   var niv=document.getElementById('mc-niv').value.trim();
   await fbUpd('cursos',id,{nombre:nom,niveles:niv?niv.split(',').map(function(n){return n.trim()}).filter(Boolean):[],desc:document.getElementById('mc-des').value.trim(),inicio:document.getElementById('mc-ini').value,fin:document.getElementById('mc-fin').value});
   closeM('m-curso');
 }
-
 window.delCurso=function(id){confirmDel('Eliminar este curso?',async function(){await fbDel('cursos',id)})}
-
 function renderCursos(){var el=document.getElementById('cursos-lista');if(!el)return;if(!DB.cursos.length){el.innerHTML='<p style="color:#aaa;padding:20px">Sin cursos.</p>';return}el.innerHTML=DB.cursos.map(function(c){var cnt=DB.alumnos.filter(function(a){return a.moduloId===c.id}).length;return'<div class="cc"><div style="display:flex;justify-content:space-between;gap:10px"><div><h4 style="margin-bottom:4px">'+c.nombre+'</h4>'+(c.desc?'<div style="font-size:12px;color:#888;margin-bottom:6px">'+c.desc+'</div>':'')+'<div class="ll">'+(c.niveles||[]).map(function(n){return'<span class="bdg bb">'+n+'</span>'}).join('')+'</div><div style="font-size:11px;color:#888;margin-top:6px">'+cnt+' alumno(s)</div></div><div style="display:flex;gap:6px;flex-shrink:0"><button class="btn bo bsm" onclick="openMCur(\''+c.id+'\')">Editar</button><button class="btn bd bsm" onclick="delCurso(\''+c.id+'\')">X</button></div></div></div>'}).join('')}
-
 function renderGantt(){var el=document.getElementById('gantt-c');var cf=DB.cursos.filter(function(c){return c.inicio&&c.fin});if(!cf.length){el.innerHTML='<div style="color:#aaa;padding:20px;text-align:center">Agrega fechas a los cursos.</div>';return}var minD=new Date(Math.min.apply(null,cf.map(function(c){return new Date(c.inicio)}))),maxD=new Date(Math.max.apply(null,cf.map(function(c){return new Date(c.fin)})));var total=maxD-minD||1;el.innerHTML=cf.map(function(c){var s=(new Date(c.inicio)-minD)/total*100,w=(new Date(c.fin)-new Date(c.inicio))/total*100;return'<div style="margin-bottom:10px"><div style="font-size:12px;font-weight:500;margin-bottom:4px">'+c.nombre+'</div><div style="background:#f0f0f0;border-radius:4px;height:24px;position:relative"><div style="position:absolute;left:'+s+'%;width:'+Math.max(w,2)+'%;background:#e8c547;height:100%;border-radius:4px;display:flex;align-items:center;padding:0 6px;font-size:11px;font-weight:600;color:#1a1a2e;overflow:hidden;white-space:nowrap">'+c.nombre+'</div></div></div>'}).join('')}
 
+// ── PAGOS ─────────────────────────────────────────────────
 window.openMPag=function(id){
   id=id||null;ePid=id;popAl('mp-al');
   document.getElementById('mp-fec').value=new Date().toISOString().split('T')[0];
@@ -524,7 +527,6 @@ window.openMPag=function(id){
   if(id){var p=DB.pagos.find(function(x){return x.id===id});if(p){document.getElementById('mp-al').value=p.alumnoId;document.getElementById('mp-per').value=p.periodo||'';document.getElementById('mp-for').value=p.forma||'Efectivo';document.getElementById('mp-mon').value=p.monto||'';document.getElementById('mp-est').value=p.estado||'Pagado';document.getElementById('mp-fec').value=p.fecha||'';document.getElementById('mp-not').value=p.notas||'';document.getElementById('mp-del').style.display='inline-block'}}
   openM('m-pago');
 }
-
 window.savePago=async function(){
   var aid=document.getElementById('mp-al').value,mon=parseFloat(document.getElementById('mp-mon').value);
   if(!aid||!mon){alert('Alumno y monto requeridos.');return}
@@ -533,14 +535,125 @@ window.savePago=async function(){
   else{data.creado=new Date().toISOString().split('T')[0];await fbAdd('pagos',data)}
   closeM('m-pago');
 }
-
 window.selPago=function(pid,nom){_selPagId=pid;document.getElementById('pag-panel-info').textContent=nom;document.getElementById('pag-panel').style.display='block'}
 window.closePagPanel=function(){_selPagId=null;document.getElementById('pag-panel').style.display='none'}
 window.doPagEdit=function(){var id=_selPagId;closePagPanel();if(id)openMPag(id)}
 window.doPagDel=function(){if(!_selPagId)return;var pid=_selPagId;closePagPanel();confirmDel('Eliminar este pago?',async function(){await fbDel('pagos',pid)})}
+window.renderPagos=function renderPagos(){var q=(document.getElementById('q-pag').value||'').toLowerCase(),fe=document.getElementById('f-epag').value;var list=DB.pagos.filter(function(p){if(fe&&p.estado!==fe)return false;if(q){var nom=gAN(p.alumnoId).toLowerCase();if(!nom.includes(q)&&!(p.periodo||'').toLowerCase().includes(q))return false}return true});document.getElementById('t-pag').innerHTML=list.map(function(p){return'<tr style="cursor:pointer" onclick="selPago(\''+p.id+'\',\''+gAN(p.alumnoId).replace(/'/g,'')+'\')"><td>'+gAN(p.alumnoId)+'</td><td>'+gAC(p.alumnoId)+'</td><td>'+(p.periodo||'-')+'</td><td>'+(p.forma||'-')+'</td><td>$'+(p.monto||0).toLocaleString('es-CO')+'</td><td>'+bdg(p.estado)+'</td><td>'+(p.fecha||'-')+'</td><td><span style="font-size:11px;color:#aaa">ver</span></td></tr>'}).join('')||'<tr><td colspan="8" style="text-align:center;color:#aaa;padding:20px">Sin registros</td></tr>'}
 
-window.renderPagos=function renderPagos(){var q=(document.getElementById('q-pag').value||'').toLowerCase(),fe=document.getElementById('f-epag').value;var list=DB.pagos.filter(function(p){if(fe&&p.estado!==fe)return false;if(q){var nom=gAN(p.alumnoId).toLowerCase();if(!nom.includes(q)&&!(p.periodo||'').toLowerCase().includes(q))return false}return true});document.getElementById('t-pag').innerHTML=list.map(function(p){return'<tr style="cursor:pointer" onclick="selPago(\''+p.id+'\',\''+gAN(p.alumnoId).replace(/'/g,'')+'\')">'+'<td>'+gAN(p.alumnoId)+'</td><td>'+gAC(p.alumnoId)+'</td><td>'+(p.periodo||'-')+'</td><td>'+(p.forma||'-')+'</td><td>$'+(p.monto||0).toLocaleString('es-CO')+'</td><td>'+bdg(p.estado)+'</td><td>'+(p.fecha||'-')+'</td><td><span style="font-size:11px;color:#aaa">ver</span></td></tr>'}).join('')||'<tr><td colspan="8" style="text-align:center;color:#aaa;padding:20px">Sin registros</td></tr>'}
+// ── EGRESOS ───────────────────────────────────────────────
+window.openMEg=function(id){
+  id=id||null; eEid=id;
+  document.getElementById('me-tit').textContent=id?'Editar egreso':'Nuevo egreso';
+  poblarCatEgreso('me-cat');
+  document.getElementById('me-fec').value=new Date().toISOString().split('T')[0];
+  ['me-con','me-val','me-not'].forEach(function(k){document.getElementById(k).value=''});
+  document.getElementById('me-cat').value='';
+  document.getElementById('me-del').style.display='none';
+  if(id){
+    var e=DB.egresos.find(function(x){return x.id===id});
+    if(e){
+      document.getElementById('me-con').value=e.concepto||'';
+      document.getElementById('me-cat').value=e.categoria||'';
+      document.getElementById('me-val').value=e.valor||'';
+      document.getElementById('me-fec').value=e.fecha||'';
+      document.getElementById('me-not').value=e.notas||'';
+      document.getElementById('me-del').style.display='inline-block';
+    }
+  }
+  openM('m-egreso');
+}
 
+window.saveEgreso=async function(){
+  var con=document.getElementById('me-con').value.trim();
+  var val=parseFloat(document.getElementById('me-val').value);
+  var fec=document.getElementById('me-fec').value;
+  if(!con){alert('Ingresa el concepto.');return}
+  if(!val){alert('Ingresa el valor.');return}
+  if(!fec){alert('Ingresa la fecha.');return}
+  var data={concepto:con,categoria:document.getElementById('me-cat').value,valor:val,fecha:fec,notas:document.getElementById('me-not').value.trim()};
+  if(eEid){await fbUpd('egresos',eEid,data)}
+  else{data.creado=new Date().toISOString().split('T')[0];await fbAdd('egresos',data)}
+  closeM('m-egreso');
+}
+
+window.delEgresoM=function(){
+  if(!eEid)return;var id=eEid;
+  confirmDel('Eliminar este egreso?',async function(){await fbDel('egresos',id);closeM('m-egreso');});
+}
+
+window.selEgreso=function(id){
+  _selEgId=id;
+  var e=DB.egresos.find(function(x){return x.id===id});if(!e)return;
+  document.getElementById('eg-panel-info').textContent=e.concepto;
+  document.getElementById('eg-panel').style.display='block';
+}
+window.closeEgPanel=function(){_selEgId=null;document.getElementById('eg-panel').style.display='none'}
+window.doEgEdit=function(){var id=_selEgId;closeEgPanel();if(id)openMEg(id)}
+window.doEgDel=function(){
+  if(!_selEgId)return;var id=_selEgId;closeEgPanel();
+  confirmDel('Eliminar este egreso?',async function(){await fbDel('egresos',id)});
+}
+
+function renderEgresos(){
+  var q=(document.getElementById('q-eg').value||'').toLowerCase();
+  var fc=document.getElementById('fe-cat').value;
+  var fm=document.getElementById('fe-mes').value;
+  var list=DB.egresos.filter(function(e){
+    if(q&&!(e.concepto||'').toLowerCase().includes(q))return false;
+    if(fc&&e.categoria!==fc)return false;
+    if(fm&&e.fecha&&e.fecha.slice(0,7)!==fm)return false;
+    return true;
+  });
+  var tot=list.reduce(function(s,e){return s+(parseFloat(e.valor)||0)},0);
+  var totEl=document.getElementById('eg-total');
+  if(totEl)totEl.textContent='Total: $'+tot.toLocaleString('es-CO');
+  var tb=document.getElementById('t-eg');
+  if(!tb)return;
+  tb.innerHTML=list.map(function(e){
+    return'<tr style="cursor:pointer" onclick="selEgreso(\'+e.id+\')">'
+      +'<td>'+(e.fecha||'-')+'</td>'
+      +'<td style="font-weight:500">'+(e.concepto||'-')+'</td>'
+      +'<td><span class="bdg" style="background:#ede9fe;color:#5b21b6;font-size:11px">'+(e.categoria||'Sin categoría')+'</span></td>'
+      +'<td style="font-weight:600;color:#b91c1c">$'+(parseFloat(e.valor)||0).toLocaleString('es-CO')+'</td>'
+      +'<td style="font-size:11px;color:#aaa">'+(e.notas||'-')+'</td>'
+      +'<td><span style="font-size:11px;color:#aaa">Acciones</span></td>'
+      +'</tr>';
+  }).join('')||'<tr><td colspan="6" style="text-align:center;color:#aaa;padding:24px">Sin registros</td></tr>';
+}
+window.renderEgresos=renderEgresos;
+
+// ── CATEGORÍAS EGRESO ─────────────────────────────────────
+window.openMCatEg=function(){
+  renderCatEgresoAdmin();
+  openM('m-cat-eg');
+}
+
+function renderCatEgresoAdmin(){
+  var el=document.getElementById('cat-eg-lista');if(!el)return;
+  var cats=DB.cat_egreso.slice().sort(function(a,b){return(a.nombre||'').localeCompare(b.nombre||'')});
+  if(!cats.length){el.innerHTML='<div style="color:#aaa;font-size:13px;padding:12px">Sin categorías. Agrega una abajo.</div>';return}
+  el.innerHTML=cats.map(function(c){
+    return'<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;border-bottom:1px solid #f0f0f0">'
+      +'<span style="font-size:13px">'+c.nombre+'</span>'
+      +'<button class="btn bd bsm" onclick="delCatEg(\''+c.id+'\')">X</button>'
+      +'</div>';
+  }).join('');
+}
+
+window.addCatEg=async function(){
+  var inp=document.getElementById('cat-eg-nueva');
+  var nom=inp.value.trim();if(!nom){alert('Ingresa el nombre.');return}
+  if(DB.cat_egreso.find(function(c){return c.nombre.toLowerCase()===nom.toLowerCase()})){alert('Ya existe esa categoría.');return}
+  await fbAdd('cat_egreso',{nombre:nom});
+  inp.value='';
+}
+
+window.delCatEg=function(id){
+  confirmDel('Eliminar esta categoría?',async function(){await fbDel('cat_egreso',id);renderCatEgresoAdmin();});
+}
+
+// ── ASISTENCIA ────────────────────────────────────────────
 window.openMAsist=function(){popAl('ma-al');document.getElementById('ma-fec').value=new Date().toISOString().split('T')[0];document.getElementById('ma-not').value='';openM('m-asist')}
 window.saveAsist=async function(){
   var aid=document.getElementById('ma-al').value;if(!aid){alert('Selecciona un alumno.');return}
@@ -548,30 +661,42 @@ window.saveAsist=async function(){
   closeM('m-asist');renderAsistencia();
 }
 window.delAsist=async function(id){await fbDel('asistencias',id);renderAsistencia()}
-
 window.renderAsistencia=function renderAsistencia(){
   var fAl=document.getElementById('q-asist-al').value,fF=document.getElementById('q-asist-f').value;
   var list=DB.asistencias.filter(function(x){if(fAl&&x.alumnoId!==fAl)return false;if(fF&&x.fecha!==fF)return false;return true});
   document.getElementById('t-asist').innerHTML=list.map(function(x){return'<tr><td>'+gAN(x.alumnoId)+'</td><td>'+gAC(x.alumnoId)+'</td><td>'+(x.fecha||'-')+'</td><td>'+bdg(x.estado)+'</td><td>'+(x.notes||'-')+'</td><td><button class="btn bd bsm" onclick="delAsist(\''+x.id+'\')">X</button></td></tr>'}).join('')||'<tr><td colspan="6" style="text-align:center;color:#aaa;padding:20px">Sin registros</td></tr>';
 }
 
+// ── REPORTES ──────────────────────────────────────────────
 window.renderReporte=function renderReporte(){
   var fAl=document.getElementById('r-al').value,fCur=document.getElementById('r-cur').value,fEst=document.getElementById('r-est').value,fMes=document.getElementById('r-mes').value;
   var list=DB.pagos.filter(function(p){if(fAl&&p.alumnoId!==fAl)return false;if(fCur){var a=gA(p.alumnoId);if(!a||a.moduloId!==fCur)return false}if(fEst&&p.estado!==fEst)return false;if(fMes&&p.fecha&&p.fecha.slice(0,7)!==fMes)return false;return true});
-  var rev=list.filter(function(p){return p.estado==='Pagado'}).reduce(function(s,p){return s+p.monto},0);
+  var ingresos=list.filter(function(p){return p.estado==='Pagado'}).reduce(function(s,p){return s+p.monto},0);
   var pen=DB.cuotas.reduce(function(s,c){return s+parseFloat(c.monto||0)},0);
-  document.getElementById('r-tot').textContent='$'+rev.toLocaleString('es-CO');
+  // Egresos del mismo mes filtrado
+  var egList=DB.egresos.filter(function(e){if(fMes&&e.fecha&&e.fecha.slice(0,7)!==fMes)return false;return true});
+  var egresos=egList.reduce(function(s,e){return s+(parseFloat(e.valor)||0)},0);
+  var utilidad=ingresos-egresos;
+  document.getElementById('r-tot').textContent='$'+ingresos.toLocaleString('es-CO');
   document.getElementById('r-pen').textContent='$'+pen.toLocaleString('es-CO');
   document.getElementById('r-cnt').textContent=list.length;
+  // Utilidad neta
+  var uEl=document.getElementById('r-utilidad');
+  if(uEl){
+    uEl.textContent='$'+utilidad.toLocaleString('es-CO');
+    uEl.style.color=utilidad>=0?'#15803d':'#b91c1c';
+  }
+  var uEgEl=document.getElementById('r-egresos');
+  if(uEgEl)uEgEl.textContent='$'+egresos.toLocaleString('es-CO');
   document.getElementById('t-rep').innerHTML=list.map(function(p){return'<tr><td>'+gAN(p.alumnoId)+'</td><td>'+gAC(p.alumnoId)+'</td><td>'+(p.periodo||'-')+'</td><td>'+(p.forma||'-')+'</td><td>$'+(p.monto||0).toLocaleString('es-CO')+'</td><td>'+bdg(p.estado)+'</td><td>'+(p.fecha||'-')+'</td></tr>'}).join('')||'<tr><td colspan="7" style="text-align:center;color:#aaa;padding:20px">Sin registros</td></tr>';
 }
 window.printRep=function(){var t=document.getElementById('rep-wrap');var w=window.open('','_blank');w.document.write('<!DOCTYPE html><html><head><title>Reporte</title><style>body{font-family:system-ui;font-size:13px}table{width:100%;border-collapse:collapse}th,td{padding:8px;border:1px solid #ddd;text-align:left}th{background:#f0f0f0}</style></head><body><h2>Reporte Financiero - Deejay Academy</h2>'+t.innerHTML+'</body></html>');w.document.close();w.print()}
 
+// ── HORARIOS ──────────────────────────────────────────────
 window.initHorariosPage=function(){
   if(!window.hCursoTab&&DB.cursos.length) window.hCursoTab=DB.cursos[0].id;
   window.renderHorariosPage();
 }
-
 window.renderHorariosPage=function(){
   if(!window.hCursoTab&&DB.cursos.length) window.hCursoTab=DB.cursos[0].id;
   var mesAct=window.hMes, cursoAct=window.hCursoTab;
@@ -618,12 +743,10 @@ window.renderHorariosPage=function(){
     +'<div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:14px">'+tabs+'</div>'
     +gridHtml+'</div>';
 }
-
 window.setCursoFecha=async function(campo,val){
   if(!window.hCursoTab)return;
   await fbUpd('cursos',window.hCursoTab,{['fechas_mes_'+window.hMes+'_'+campo]:val});
 }
-
 window.openGrupoModal=function(cursoId,nivel,franja){
   var tmp=document.getElementById('_hm');if(tmp)tmp.remove();
   var curso=DB.cursos.find(function(c){return c.id===cursoId});
@@ -632,7 +755,6 @@ window.openGrupoModal=function(cursoId,nivel,franja){
   ov.innerHTML='<div class="modal" style="max-width:420px"><div class="mh"><h3>'+nivel+' - '+franja+'</h3><button class="btn bo bsm" onclick="document.getElementById(\'_hm\').remove()">X</button></div><div class="mb"><div class="fg" style="grid-template-columns:1fr"><div class="fgp"><label>Instructor</label><input id="_hi" placeholder="Nombre del instructor"></div><div class="fgp"><label>Alumnos (Ctrl+clic para varios)</label><select id="_has" multiple style="min-height:90px">'+(alOpts||'<option disabled>Sin alumnos en este curso</option>')+'</select></div><div class="fg" style="grid-template-columns:1fr 1fr"><div class="fgp"><label>Fecha inicio</label><input type="date" id="_hfi" value="'+(curso&&curso.inicio||'')+'"></div><div class="fgp"><label>Fecha fin</label><input type="date" id="_hff" value="'+(curso&&curso.fin||'')+'"></div></div></div></div><div class="mf"><button class="btn bo" onclick="document.getElementById(\'_hm\').remove()">Cancelar</button><button class="btn bp" onclick="window.saveGrupo(\''+cursoId+'\',\''+nivel+'\',\''+franja+'\')">Guardar</button></div></div>';
   document.body.appendChild(ov);
 }
-
 window.saveGrupo=async function(cursoId,nivel,franja){
   var inst=document.getElementById('_hi').value.trim();
   var sel=document.getElementById('_has');
@@ -641,9 +763,7 @@ window.saveGrupo=async function(cursoId,nivel,franja){
   await fbAdd('horario_grupos',{cursoId:cursoId,nivel:nivel,franja:franja,mes:window.hMes,instructor:inst,alumnos:als,fechaIni:fi2,fechaFin:ff});
   var t=document.getElementById('_hm');if(t)t.remove();window.renderHorariosPage();
 }
-
 window.delGrupo=async function(id){await fbDel('horario_grupos',id);window.renderHorariosPage()}
-
 window.editGrupo=function(id){
   var g=DB.horario_grupos.find(function(x){return x.id===id});if(!g)return;
   var tmp=document.getElementById('_hm');if(tmp)tmp.remove();
@@ -652,27 +772,27 @@ window.editGrupo=function(id){
   ov.innerHTML='<div class="modal" style="max-width:420px"><div class="mh"><h3>'+g.nivel+' - '+g.franja+'</h3><button class="btn bo bsm" onclick="document.getElementById(\'_hm\').remove()">X</button></div><div class="mb"><div class="fg" style="grid-template-columns:1fr"><div class="fgp"><label>Instructor</label><input id="_hi" value="'+(g.instructor||'')+'"></div><div class="fgp"><label>Alumnos</label><select id="_has" multiple style="min-height:90px">'+(alOpts||'<option disabled>Sin alumnos</option>')+'</select></div><div class="fg" style="grid-template-columns:1fr 1fr"><div class="fgp"><label>Fecha inicio</label><input type="date" id="_hfi" value="'+(g.fechaIni||'')+'"></div><div class="fgp"><label>Fecha fin</label><input type="date" id="_hff" value="'+(g.fechaFin||'')+'"></div></div></div></div><div class="mf"><button class="btn bd" onclick="window.delGrupo(\''+id+'\');document.getElementById(\'_hm\').remove()" style="margin-right:auto">Eliminar</button><button class="btn bo" onclick="document.getElementById(\'_hm\').remove()">Cancelar</button><button class="btn bp" onclick="window.updGrupo(\''+id+'\')">Guardar</button></div></div>';
   document.body.appendChild(ov);
 }
-
 window.updGrupo=async function(id){
   var sel=document.getElementById('_has');
   await fbUpd('horario_grupos',id,{instructor:document.getElementById('_hi').value.trim(),alumnos:sel?Array.from(sel.selectedOptions).map(function(o){return o.value}):[],fechaIni:document.getElementById('_hfi').value,fechaFin:document.getElementById('_hff').value});
   var t=document.getElementById('_hm');if(t)t.remove();window.renderHorariosPage();
 }
 
+// ── EXPORTAR ──────────────────────────────────────────────
 function toCSV(r,h){var e=function(v){return'"'+String(v||'').replace(/"/g,'""')+'"'};return[h.map(e).join(',')].concat(r.map(function(x){return h.map(function(k){return e(x[k])}).join(',')})).join('\n')}
 function dlCSV(c,f){var a=document.createElement('a');a.href='data:text/csv;charset=utf-8,\uFEFF'+encodeURIComponent(c);a.download=f;a.click()}
 window.expAlCSV=function(){dlCSV(toCSV(DB.alumnos.map(function(a){return{Nombre:a.nombre,Cedula:a.cedula,Celular:a.telefono,Programa:gCN(a.moduloId,a.nivel),Fecha_Ingreso:a.ingreso}}),['Nombre','Cedula','Celular','Programa','Fecha_Ingreso']),'Base_Alumnos_Deejay_Academy.csv')}
 window.expPagCSV=function(){dlCSV(toCSV(DB.pagos.map(function(p){return{Alumno:gAN(p.alumnoId),Curso:gAC(p.alumnoId),Periodo:p.periodo,Forma:p.forma,Monto:p.monto,Estado:p.estado,Fecha:p.fecha}}),['Alumno','Curso','Periodo','Forma','Monto','Estado','Fecha']),'Reporte_Flujo_Caja.csv')}
+window.expEgCSV=function(){dlCSV(toCSV(DB.egresos.map(function(e){return{Fecha:e.fecha,Concepto:e.concepto,Categoria:e.categoria,Valor:e.valor,Notas:e.notas}}),['Fecha','Concepto','Categoria','Valor','Notas']),'Egresos_Deejay_Academy.csv')}
 
 window.expJSON=function(){
-  var backup={_version:1,_fecha:new Date().toISOString(),alumnos:DB.alumnos,pagos:DB.pagos,cuotas:DB.cuotas,asistencias:DB.asistencias,cursos:DB.cursos,horario_grupos:DB.horario_grupos};
+  var backup={_version:1,_fecha:new Date().toISOString(),alumnos:DB.alumnos,pagos:DB.pagos,cuotas:DB.cuotas,asistencias:DB.asistencias,cursos:DB.cursos,horario_grupos:DB.horario_grupos,egresos:DB.egresos,cat_egreso:DB.cat_egreso};
   var blob=new Blob([JSON.stringify(backup,null,2)],{type:'application/json'});
   var a=document.createElement('a');
   a.href=URL.createObjectURL(blob);
   a.download='DJA_Backup_'+new Date().toISOString().split('T')[0]+'.json';
   a.click();
 }
-
 window.impJSON=function(){
   var input=document.createElement('input');input.type='file';input.accept='.json';
   input.onchange=function(e){
@@ -682,17 +802,16 @@ window.impJSON=function(){
       try{
         var data=JSON.parse(ev.target.result);
         if(!data.alumnos&&!data.cursos){alert('Archivo no valido.');return}
-        var total=(data.alumnos||[]).length+(data.pagos||[]).length+(data.cuotas||[]).length+(data.asistencias||[]).length+(data.cursos||[]).length+(data.horario_grupos||[]).length;
+        var total=(data.alumnos||[]).length+(data.pagos||[]).length+(data.cuotas||[]).length+(data.asistencias||[]).length+(data.cursos||[]).length+(data.horario_grupos||[]).length+(data.egresos||[]).length+(data.cat_egreso||[]).length;
         if(!confirm('Importar '+total+' registros? Los existentes NO se eliminan.'))return;
         importarJSON(data);
       }catch(err){alert('Error: '+err.message);}
     };reader.readAsText(file);
   };input.click();
 }
-
 async function importarJSON(data){
   var el=document.getElementById('_imp_status');if(el)el.textContent='Importando...';
-  var cols=['cursos','alumnos','pagos','cuotas','asistencias','horario_grupos'];
+  var cols=['cursos','alumnos','pagos','cuotas','asistencias','horario_grupos','egresos','cat_egreso'];
   var total=0,done=0;
   cols.forEach(function(c){total+=(data[c]||[]).length});
   for(var ci=0;ci<cols.length;ci++){
