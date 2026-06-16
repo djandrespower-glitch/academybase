@@ -175,6 +175,16 @@ window.addEventListener("DOMContentLoaded", function() {
       var ov = document.getElementById('_login'); if (ov) ov.remove();
       var rol = await obtenerRol(user.email);
       aplicarRol(rol);
+      // Mostrar usuario logueado
+      var userLabel = document.getElementById('_user_label');
+      if (!userLabel) {
+        userLabel = document.createElement('span');
+        userLabel.id = '_user_label';
+        userLabel.style.cssText = 'font-size:12px;color:#888;padding:6px 10px;border-radius:8px;background:#f0f0f0;font-weight:500';
+        document.getElementById('topbar-acts').appendChild(userLabel);
+      }
+      var shortEmail = user.email.replace(/@gmail\.com$/,'').replace(/@.*$/,'');
+      userLabel.textContent = '👤 ' + shortEmail;
       initApp();
     } else {
       var btn = document.getElementById('_logout_btn'); if (btn) btn.remove();
@@ -260,6 +270,7 @@ window.showPage=function(id,el){
   document.getElementById('page-title').textContent=T[id]||id;
   var ac=document.getElementById('topbar-acts');
   var logoutBtn=document.getElementById('_logout_btn');
+  var userLbl=document.getElementById('_user_label');
   ac.innerHTML='';
   if(id==='alumnos')ac.innerHTML='<button class="btn bp bsm" onclick="openMAl()">+ Nuevo alumno</button>';
   if(id==='pagos')ac.innerHTML='<button class="btn bp bsm" onclick="openMPag()">+ Registrar pago</button>';
@@ -270,6 +281,8 @@ window.showPage=function(id,el){
     var btn=document.createElement('button');btn.id='_logout_btn';btn.className='btn bo bsm';
     btn.textContent='Cerrar sesion';btn.onclick=window.doLogout;ac.appendChild(btn);
   }
+  // Re-append user label
+  if(userLbl){ac.appendChild(userLbl)}
   var fns={dashboard:renderDash,alertas:renderAlertas,alumnos:renderAlumnos,cursos:renderCursos,pagos:renderPagos,egresos:renderEgresos,reporte:renderReporte,asistencia:renderAsistencia,horarios_aulas:window.initHorariosPage,exportar:function(){}};
   if(fns[id])fns[id]();
 }
