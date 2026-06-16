@@ -802,7 +802,7 @@ function renderEgresos(){
   var tb=document.getElementById('t-eg');
   if(!tb)return;
   tb.innerHTML=list.map(function(e){
-    return'<tr style="cursor:pointer" onclick="selEgreso(\'+e.id+\')">'
+    return'<tr style="cursor:pointer" onclick="selEgreso(\''+e.id+'\')">'
       +'<td>'+(e.fecha||'-')+'</td>'
       +'<td style="font-weight:500">'+(e.concepto||'-')+'</td>'
       +'<td><span class="bdg" style="background:#ede9fe;color:#5b21b6;font-size:11px">'+(e.categoria||'Sin categoría')+'</span></td>'
