@@ -191,6 +191,8 @@ var FRANJAS_H=["9-11 AM","11-1 PM","2-4 PM","4-6 PM","6-8 PM"];
 var MESES_N=["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
 var HCOLORS=["#3b3210","#0f2d1a","#2d0f1f","#0a1f2d","#1a0f30","#2d1a08"];
 var _selAlId=null, _selPagId=null, _selEgId=null;
+var _pagSort={col:'fecha',dir:-1};
+var _egSort={col:'fecha',dir:-1};
 
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,5)}
 function openM(id){document.getElementById(id).classList.add('show')}
@@ -665,6 +667,16 @@ window.closePagPanel=function(){_selPagId=null;document.getElementById('pag-pane
 window.doPagEdit=function(){var id=_selPagId;closePagPanel();if(id)openMPag(id)}
 window.doPagDel=function(){if(!_selPagId)return;var pid=_selPagId;closePagPanel();confirmDel('Eliminar este ingreso?',async function(){await fbDel('pagos',pid)})}
 
+window.sortPagos=function(col){
+  if(_pagSort.col===col){_pagSort.dir*=-1;}else{_pagSort.col=col;_pagSort.dir=-1;}
+  // Update arrows
+  ['nombre','curso','monto','neto','fecha','forma','estado','comision','formulario','notas'].forEach(function(c){
+    var el=document.getElementById('sph-'+c);
+    if(el) el.textContent=c===_pagSort.col?(_pagSort.dir===-1?'↓':'↑'):'↕';
+  });
+  renderPagos();
+}
+
 window.renderPagos=function renderPagos(){
   var q=(document.getElementById('q-pag').value||'').toLowerCase();
   var fe=document.getElementById('f-epag').value;
@@ -674,6 +686,12 @@ window.renderPagos=function renderPagos(){
     if(fm&&p.fecha&&p.fecha.slice(0,7)!==fm)return false;
     if(q){var nom=gAN(p.alumnoId).toLowerCase();if(!nom.includes(q)&&!(p.curso||'').toLowerCase().includes(q)&&!(p.notas||'').toLowerCase().includes(q))return false}
     return true;
+  });
+  // Ordenar
+  list.sort(function(a,b){
+    var va=a[_pagSort.col]||'', vb=b[_pagSort.col]||'';
+    if(_pagSort.col==='monto'||_pagSort.col==='neto'||_pagSort.col==='comision'){va=parseFloat(va)||0;vb=parseFloat(vb)||0;}
+    return va<vb?-_pagSort.dir:va>vb?_pagSort.dir:0;
   });
   var tot=list.reduce(function(s,p){return s+(parseFloat(p.monto)||0)},0);
   var totEl=document.getElementById('pag-total');
@@ -759,6 +777,12 @@ function renderEgresos(){
     if(fm&&e.fecha&&e.fecha.slice(0,7)!==fm)return false;
     return true;
   });
+  // Ordenar
+  list.sort(function(a,b){
+    var va=a[_egSort.col]||'', vb=b[_egSort.col]||'';
+    if(_egSort.col==='valor'){va=parseFloat(va)||0;vb=parseFloat(vb)||0;}
+    return va<vb?-_egSort.dir:va>vb?_egSort.dir:0;
+  });
   var tot=list.reduce(function(s,e){return s+(parseFloat(e.valor)||0)},0);
   var totEl=document.getElementById('eg-total');
   if(totEl)totEl.textContent='Total: $'+tot.toLocaleString('es-CO');
@@ -774,6 +798,15 @@ function renderEgresos(){
       +'<td><span style="font-size:11px;color:#aaa">Acciones</span></td>'
       +'</tr>';
   }).join('')||'<tr><td colspan="6" style="text-align:center;color:#aaa;padding:24px">Sin registros</td></tr>';
+}
+window.sortEgresos=function(col){
+  if(_egSort.col===col){_egSort.dir*=-1;}else{_egSort.col=col;_egSort.dir=-1;}
+  // Update arrows
+  ['fecha','concepto','categoria','valor'].forEach(function(c){
+    var el=document.getElementById('seh-'+c);
+    if(el) el.textContent=c===_egSort.col?(_egSort.dir===-1?'↓':'↑'):'↕';
+  });
+  renderEgresos();
 }
 window.renderEgresos=renderEgresos;
 
