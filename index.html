@@ -628,7 +628,7 @@
             stroke-width="2">
             <rect x="1" y="4" width="22" height="16" rx="2" />
             <line x1="1" y1="10" x2="23" y2="10" />
-          </svg>Pagos</div>
+          </svg>Ingresos</div>
         <div class="ni" onclick="showPage('egresos',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>Egresos</div>
         <div class="ni" onclick="showPage('reporte',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
             stroke-width="2">
@@ -778,29 +778,36 @@
         <div id="page-pagos" class="page">
           <div class="tw">
             <div class="ttb">
-              <input class="si" placeholder="Buscar pago..." id="q-pag" oninput="renderPagos()">
-              <select class="fs" id="f-epag" onchange="renderPagos()" style="width:150px">
-                <option value="">Todos</option>
-                <option>Pagado</option>
-                <option>Pendiente</option>
-                <option>Vencido</option>
+              <input class="si" placeholder="Buscar ingreso..." id="q-pag" oninput="renderPagos()">
+              <select class="fs" id="f-epag" onchange="renderPagos()" style="width:160px">
+                <option value="">Todos los estados</option>
               </select>
+              <input type="month" class="fs" id="fp-mes" onchange="renderPagos()" style="width:150px">
+              <button class="btn bo bsm" onclick="openMCatPag()" style="white-space:nowrap">&#9881; Categorías</button>
             </div>
-            <table>
-              <thead>
-                <tr>
-                  <th>Alumno</th>
-                  <th>Curso</th>
-                  <th>Período</th>
-                  <th>Forma</th>
-                  <th>Monto</th>
-                  <th>Estado</th>
-                  <th>Fecha</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody id="t-pag"></tbody>
-            </table>
+            <div style="padding:10px 14px;border-bottom:1px solid #f0f0f0;display:flex;justify-content:flex-end">
+              <span id="pag-total" style="font-size:13px;font-weight:700;color:#15803d"></span>
+            </div>
+            <div style="overflow-x:auto">
+              <table style="min-width:1100px">
+                <thead>
+                  <tr>
+                    <th>Nombre</th>
+                    <th>Curso</th>
+                    <th>Valor</th>
+                    <th>Neto</th>
+                    <th>Fecha</th>
+                    <th>Forma de pago</th>
+                    <th>Cuotas/Completo</th>
+                    <th>Comisión</th>
+                    <th>Formulario/Contrato</th>
+                    <th>Observaciones</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody id="t-pag"></tbody>
+              </table>
+            </div>
           </div>
         </div>
 
@@ -1035,36 +1042,69 @@
 
   <!-- Modal Pago -->
   <div class="ov" id="m-pago">
-    <div class="modal" style="max-width:420px">
+    <div class="modal" style="max-width:560px">
       <div class="mh">
-        <h3>Registrar pago</h3><button class="btn bo bsm" onclick="closeM('m-pago')">X</button>
+        <h3 id="mp-tit">Nuevo ingreso</h3>
+        <button class="btn bo bsm" onclick="closeM('m-pago')">X</button>
       </div>
       <div class="mb">
-        <div class="fg" style="grid-template-columns:1fr">
-          <div class="fgp"><label>Alumno</label><select id="mp-al">
-              <option value="">Seleccionar...</option>
-            </select></div>
-          <div class="fgp"><label>Periodo</label><input id="mp-per"></div>
-          <div class="fgp"><label>Forma de pago</label><select id="mp-for">
-              <option value="Efectivo">Efectivo</option>
-              <option value="Llave">Llave</option>
-              <option value="Tarjeta">Tarjeta</option>
-            </select></div>
-          <div class="fgp"><label>Monto (COP)</label><input id="mp-mon" type="number"></div>
-          <div class="fgp"><label>Estado</label><select id="mp-est">
-              <option>Pagado</option>
-              <option>Pendiente</option>
-              <option>Vencido</option>
-            </select></div>
+        <div class="fg" style="grid-template-columns:1fr 1fr">
+          <div class="fgp" style="grid-column:1/-1"><label>Nombre (alumno)</label><select id="mp-al"><option value="">Seleccionar...</option></select></div>
+          <div class="fgp" style="grid-column:1/-1"><label>Curso</label><select id="mp-cur"><option value="">Seleccionar...</option></select></div>
+          <div class="fgp"><label>Valor (COP)</label><input id="mp-mon" type="number" placeholder="0"></div>
+          <div class="fgp"><label>Neto (COP)</label><input id="mp-net" type="number" placeholder="0"></div>
           <div class="fgp"><label>Fecha</label><input id="mp-fec" type="date"></div>
-          <div class="fgp"><label>Notas</label><textarea id="mp-not"></textarea></div>
+          <div class="fgp"><label>Forma de pago</label><select id="mp-for"><option value="">Seleccionar...</option></select></div>
+          <div class="fgp"><label>Cuotas / Completo</label><select id="mp-est"><option value="">Seleccionar...</option></select></div>
+          <div class="fgp"><label>Comisión (COP)</label><input id="mp-com" type="number" placeholder="0"></div>
+          <div class="fgp" style="grid-column:1/-1"><label>Formulario / Contrato</label><select id="mp-form"><option value="">Seleccionar...</option></select></div>
+          <div class="fgp" style="grid-column:1/-1"><label>Observaciones</label><textarea id="mp-not" placeholder="Notas adicionales..."></textarea></div>
         </div>
       </div>
       <div class="mf">
         <button class="btn bd" id="mp-del" style="margin-right:auto;display:none" onclick="delPagoM()">Eliminar</button>
         <button class="btn bo" onclick="closeM('m-pago')">Cancelar</button>
-        <button class="btn bp" onclick="savePago()">Guardar</button>
+        <button class="btn bp" onclick="savePago()">Guardar ingreso</button>
       </div>
+    </div>
+  </div>
+
+  <!-- Modal Categorías Ingresos -->
+  <div class="ov" id="m-cat-pag">
+    <div class="modal" style="max-width:500px">
+      <div class="mh">
+        <h3>Categorías de ingresos</h3>
+        <button class="btn bo bsm" onclick="closeM('m-cat-pag')">X</button>
+      </div>
+      <div class="mb">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+          <div>
+            <div style="font-size:12px;font-weight:600;color:#888;margin-bottom:8px">FORMA DE PAGO</div>
+            <div id="cat-pag-for-lista" style="max-height:200px;overflow-y:auto;border:.5px solid #f0f0f0;border-radius:8px;margin-bottom:8px"></div>
+            <div style="display:flex;gap:6px">
+              <input id="cat-pag-for-nueva" class="si" placeholder="Nueva forma..." style="flex:1" onkeydown="if(event.key==='Enter')addCatPag('for')">
+              <button class="btn bp bsm" onclick="addCatPag('for')">+</button>
+            </div>
+          </div>
+          <div>
+            <div style="font-size:12px;font-weight:600;color:#888;margin-bottom:8px">CUOTAS / COMPLETO</div>
+            <div id="cat-pag-est-lista" style="max-height:200px;overflow-y:auto;border:.5px solid #f0f0f0;border-radius:8px;margin-bottom:8px"></div>
+            <div style="display:flex;gap:6px">
+              <input id="cat-pag-est-nueva" class="si" placeholder="Nuevo estado..." style="flex:1" onkeydown="if(event.key==='Enter')addCatPag('est')">
+              <button class="btn bp bsm" onclick="addCatPag('est')">+</button>
+            </div>
+          </div>
+          <div style="grid-column:1/-1">
+            <div style="font-size:12px;font-weight:600;color:#888;margin-bottom:8px">FORMULARIO / CONTRATO</div>
+            <div id="cat-pag-form-lista" style="max-height:150px;overflow-y:auto;border:.5px solid #f0f0f0;border-radius:8px;margin-bottom:8px"></div>
+            <div style="display:flex;gap:6px">
+              <input id="cat-pag-form-nueva" class="si" placeholder="Nueva opción..." style="flex:1" onkeydown="if(event.key==='Enter')addCatPag('form')">
+              <button class="btn bp bsm" onclick="addCatPag('form')">+</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="mf"><button class="btn bo" onclick="closeM('m-cat-pag')">Cerrar</button></div>
     </div>
   </div>
 
