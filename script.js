@@ -553,7 +553,7 @@ function renderCatPagListas(){
     el.innerHTML=cats.map(function(c){
       return'<div style="display:flex;align-items:center;justify-content:space-between;padding:7px 12px;border-bottom:1px solid #f0f0f0">'
         +'<span style="font-size:13px">'+c.nombre+'</span>'
-        +'<button class="btn bd bsm" onclick="delCatPag(''+t+'',''+c.id+'')">X</button>'
+        +'<button class="btn bd bsm" onclick="delCatPag(\''+t+'\',\''+c.id+'\')">'+'X</button>'
         +'</div>';
     }).join('');
   });
@@ -647,7 +647,7 @@ window.renderPagos=function renderPagos(){
   var totEl=document.getElementById('pag-total');
   if(totEl)totEl.textContent='Total: $'+tot.toLocaleString('es-CO');
   document.getElementById('t-pag').innerHTML=list.map(function(p){
-    return'<tr style="cursor:pointer" onclick="selPago(''+p.id+'',''+gAN(p.alumnoId).replace(/'/g,'')+'')">'+
+    return'<tr style="cursor:pointer" onclick="selPago(\''+p.id+'\',\''+gAN(p.alumnoId).replace(/'/g,'')+'\')">'+
       '<td style="font-weight:500">'+gAN(p.alumnoId)+'</td>'+
       '<td><span class="bdg" style="background:#ede9fe;color:#5b21b6;font-size:11px">'+(p.curso||'-')+'</span></td>'+
       '<td style="font-weight:600;color:#15803d">$'+(parseFloat(p.monto)||0).toLocaleString('es-CO')+'</td>'+
