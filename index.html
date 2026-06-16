@@ -1078,6 +1078,14 @@
       </div>
       <div class="mb">
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+          <div style="grid-column:1/-1">
+            <div style="font-size:12px;font-weight:600;color:#888;margin-bottom:8px">CURSO</div>
+            <div id="cat-pag-cur-lista" style="max-height:150px;overflow-y:auto;border:.5px solid #f0f0f0;border-radius:8px;margin-bottom:8px"></div>
+            <div style="display:flex;gap:6px">
+              <input id="cat-pag-cur-nueva" class="si" placeholder="Nuevo curso..." style="flex:1" onkeydown="if(event.key==='Enter')addCatPag('cur')">
+              <button class="btn bp bsm" onclick="addCatPag('cur')">+</button>
+            </div>
+          </div>
           <div>
             <div style="font-size:12px;font-weight:600;color:#888;margin-bottom:8px">FORMA DE PAGO</div>
             <div id="cat-pag-for-lista" style="max-height:200px;overflow-y:auto;border:.5px solid #f0f0f0;border-radius:8px;margin-bottom:8px"></div>
