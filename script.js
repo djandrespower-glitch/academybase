@@ -94,10 +94,24 @@ function aplicarRol(rol) {
   var sPen = document.getElementById('s-pen');
   if (sMes) sMes.closest('.sc').style.display = rol === 'admin' ? '' : 'none';
   if (sPen) sPen.closest('.sc').style.display = rol === 'admin' ? '' : 'none';
+  // Ocultar total de ingresos para asistente
+  var pagTot=document.getElementById('pag-total');
+  if(pagTot) pagTot.style.display=rol==='admin'?'':'none';
   // Cambiar gráfico dashboard según rol
   var chartTitle = document.getElementById('chart-title');
   if (chartTitle) chartTitle.textContent = rol === 'admin' ? 'Ingresos 6 meses' : 'Egresos 6 meses';
-  renderChartPorRol(rol);
+  // Forzar render del gráfico correcto
+  var now=new Date(),mo=now.getMonth(),y=now.getFullYear();
+  var meses=[];for(var ii=5;ii>=0;ii--){var dd=new Date(y,mo-ii,1);meses.push({lbl:dd.toLocaleString('es-CO',{month:'short'}),m:dd.getMonth(),y:dd.getFullYear()})}
+  var tots2;
+  if(rol==='admin'){
+    tots2=meses.map(function(x){return DB.pagos.filter(function(p){if(!p.fecha||p.estado!=='Pagado')return false;var d=new Date(p.fecha);return d.getMonth()===x.m&&d.getFullYear()===x.y}).reduce(function(s,p){return s+p.monto},0)});
+  } else {
+    tots2=meses.map(function(x){return DB.egresos.filter(function(e){if(!e.fecha)return false;var d=new Date(e.fecha);return d.getMonth()===x.m&&d.getFullYear()===x.y}).reduce(function(s,e){return s+(parseFloat(e.valor)||0)},0)});
+  }
+  var mx2=Math.max.apply(null,tots2.concat([1]));
+  var chartEl2=document.getElementById('chart');
+  if(chartEl2) chartEl2.innerHTML=tots2.every(function(t){return t===0})?'<div style="color:#aaa;font-size:13px;text-align:center;padding:20px">Sin registros</div>':'<div class="cbw">'+meses.map(function(x,i){return'<div class="cbc"><div class="cbv">'+(tots2[i]?'$'+Math.round(tots2[i]/1000)+'k':'')+'</div><div class="cb" style="height:'+Math.max(4,Math.round(tots2[i]/mx2*90))+'px"></div><div class="cbl">'+x.lbl+'</div></div>'}).join('')+'</div>';
   // Botón logout
   if (!document.getElementById('_logout_btn')) {
     var btn = document.createElement('button');
@@ -266,7 +280,6 @@ function renderDash(){
   document.getElementById('s-mes').textContent='$'+totM.toLocaleString('es-CO');
   document.getElementById('s-pen').textContent=DB.cuotas.length;
   document.getElementById('s-cur').textContent=DB.cursos.length;
-  renderChartPorRol(rolActual||'admin');
   var als=calcAlerts();
   document.getElementById('dash-al').innerHTML=!als.length?'<div style="color:#15803d;font-size:13px;text-align:center;padding:20px">Todos al dia!</div>':als.map(function(a){return'<div class="ai" style="background:#fee2e2;border-radius:6px;margin:4px 8px;padding:8px 10px"><span>!</span><span style="font-size:12px;color:#b91c1c;font-weight:600">'+a.t+'</span></div>'}).join('');
   document.getElementById('dash-rec').innerHTML=DB.alumnos.slice(0,4).map(function(a){return'<tr><td><div style="display:flex;align-items:center;gap:8px">'+avEl(a)+'<span>'+a.nombre+'</span></div></td><td>'+gCN(a.moduloId,a.nivel)+'</td><td>'+(a.ingreso||'-')+'</td><td>'+(a.fin||'-')+'</td></tr>'}).join('')||'<tr><td colspan="4" style="text-align:center;color:#aaa;padding:20px">Sin alumnos</td></tr>';
