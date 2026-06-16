@@ -630,6 +630,7 @@
             <rect x="1" y="4" width="22" height="16" rx="2" />
             <line x1="1" y1="10" x2="23" y2="10" />
           </svg>Pagos</div>
+        <div class="ni" onclick="showPage('egresos',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>Egresos</div>
         <div class="ni" onclick="showPage('reporte',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
             stroke-width="2">
             <line x1="18" y1="20" x2="18" y2="10" />
@@ -822,14 +823,22 @@
             <input type="month" class="fs" id="r-mes" onchange="renderReporte()" style="width:150px">
             <button class="btn bo bsm" onclick="printRep()">&#128424; Imprimir</button>
           </div>
-          <div class="sg" style="grid-template-columns:repeat(3,1fr)">
+          <div class="sg" style="grid-template-columns:repeat(5,1fr)">
             <div class="sc">
-              <div class="lbl">Recaudado</div>
-              <div class="val" id="r-tot">$0</div>
+              <div class="lbl">Ingresos</div>
+              <div class="val" id="r-tot" style="color:#15803d">$0</div>
             </div>
             <div class="sc">
-              <div class="lbl">Pendiente</div>
-              <div class="val" id="r-pen" style="color:#b91c1c">$0</div>
+              <div class="lbl">Egresos</div>
+              <div class="val" id="r-egresos" style="color:#b91c1c">$0</div>
+            </div>
+            <div class="sc">
+              <div class="lbl">Utilidad Neta</div>
+              <div class="val" id="r-utilidad" style="color:#1a1a2e">$0</div>
+            </div>
+            <div class="sc">
+              <div class="lbl">Por cobrar</div>
+              <div class="val" id="r-pen" style="color:#a16207">$0</div>
             </div>
             <div class="sc">
               <div class="lbl">Registros</div>
@@ -854,6 +863,28 @@
           </div>
         </div>
 
+
+        <!-- PÁGINA EGRESOS -->
+        <div id="page-egresos" class="page">
+          <div class="tw">
+            <div class="ttb">
+              <input class="si" placeholder="Buscar egreso..." id="q-eg" oninput="renderEgresos()">
+              <select class="fs" id="fe-cat" onchange="renderEgresos()" style="width:180px">
+                <option value="">Todas las categorías</option>
+              </select>
+              <input type="month" class="fs" id="fe-mes" onchange="renderEgresos()" style="width:150px">
+              <button class="btn bo bsm" onclick="openMCatEg()" style="white-space:nowrap">&#9881; Categorías</button>
+            </div>
+            <div style="padding:10px 14px;border-bottom:1px solid #f0f0f0;display:flex;justify-content:flex-end">
+              <span id="eg-total" style="font-size:13px;font-weight:700;color:#b91c1c"></span>
+            </div>
+            <table>
+              <thead><tr><th>Fecha</th><th>Concepto</th><th>Categoría</th><th>Valor</th><th>Notas</th><th></th></tr></thead>
+              <tbody id="t-eg"></tbody>
+            </table>
+          </div>
+        </div>
+
         <div id="page-horarios_aulas" class="page">
           <div id="horarios-root"></div>
         </div>
@@ -867,8 +898,15 @@
             </div>
             <div class="tw" style="padding:20px">
               <h3 style="margin-bottom:6px;font-size:14px">Exportar historial financiero</h3>
-              <p style="font-size:12px;color:#666;margin-bottom:10px">Flujos de caja y abonos.</p><button class="btn bp"
-                onclick="expPagCSV()">&#8659; Descargar CSV pagos</button>
+              <p style="font-size:12px;color:#666;margin-bottom:10px">Flujos de caja y abonos.</p>
+              <button class="btn bp" onclick="expPagCSV()">&#8659; Descargar CSV pagos</button>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
+            <div class="tw" style="padding:20px">
+              <h3 style="margin-bottom:6px;font-size:14px">Exportar egresos</h3>
+              <p style="font-size:12px;color:#666;margin-bottom:10px">Historial completo de gastos.</p>
+              <button class="btn bp" onclick="expEgCSV()">&#8659; Descargar CSV egresos</button>
             </div>
           </div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
@@ -1085,6 +1123,67 @@
       </div>
       <div class="mb" id="m-ver-body"></div>
       <div class="mf"><button class="btn bo" onclick="closeM('m-ver')">Cerrar</button></div>
+    </div>
+  </div>
+
+
+  <!-- Panel Egreso -->
+  <div class="fixed-panel" id="eg-panel">
+    <span style="font-size:12px;color:#aaa;display:block;margin-bottom:4px">Egreso seleccionado:</span>
+    <b id="eg-panel-info" style="color:#e8c547;font-size:13px"></b>
+    <div style="display:flex;gap:6px;margin-top:8px">
+      <button class="btn bo bsm" onclick="doEgEdit()">Editar</button>
+      <button class="btn bd bsm" onclick="doEgDel()">Eliminar</button>
+      <button class="btn bo bsm" onclick="closeEgPanel()" style="background:#333;color:#fff;border:none">X</button>
+    </div>
+  </div>
+
+  <!-- Modal Nuevo Egreso -->
+  <div class="ov" id="m-egreso">
+    <div class="modal" style="max-width:460px">
+      <div class="mh">
+        <h3 id="me-tit">Nuevo egreso</h3>
+        <button class="btn bo bsm" onclick="closeM('m-egreso')">X</button>
+      </div>
+      <div class="mb">
+        <div class="fg" style="grid-template-columns:1fr">
+          <div class="fgp"><label>Concepto *</label><input id="me-con" placeholder="Ej: Pago arriendo local"></div>
+          <div class="fgp"><label>Categoría</label>
+            <select id="me-cat">
+              <option value="">Seleccionar categoría...</option>
+            </select>
+          </div>
+          <div class="fg" style="grid-template-columns:1fr 1fr">
+            <div class="fgp"><label>Valor (COP) *</label><input id="me-val" type="number" placeholder="0"></div>
+            <div class="fgp"><label>Fecha *</label><input id="me-fec" type="date"></div>
+          </div>
+          <div class="fgp"><label>Notas</label><textarea id="me-not" placeholder="Observaciones opcionales..."></textarea></div>
+        </div>
+      </div>
+      <div class="mf">
+        <button class="btn bd" id="me-del" style="margin-right:auto;display:none" onclick="delEgresoM()">Eliminar</button>
+        <button class="btn bo" onclick="closeM('m-egreso')">Cancelar</button>
+        <button class="btn bp" onclick="saveEgreso()">Guardar egreso</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Categorías Egreso -->
+  <div class="ov" id="m-cat-eg">
+    <div class="modal" style="max-width:400px">
+      <div class="mh">
+        <h3>Categorías de egreso</h3>
+        <button class="btn bo bsm" onclick="closeM('m-cat-eg')">X</button>
+      </div>
+      <div class="mb">
+        <div id="cat-eg-lista" style="margin-bottom:14px;max-height:300px;overflow-y:auto;border:.5px solid #f0f0f0;border-radius:8px"></div>
+        <div style="display:flex;gap:8px">
+          <input id="cat-eg-nueva" class="si" placeholder="Nueva categoría..." style="flex:1"
+            onkeydown="if(event.key==='Enter')addCatEg()">
+          <button class="btn bp bsm" onclick="addCatEg()">+ Agregar</button>
+        </div>
+      </div>
+      <div class="mf"><button class="btn bo" onclick="closeM('m-cat-eg')">Cerrar</button></div>
     </div>
   </div>
 
