@@ -31,7 +31,7 @@ async function fbUpd(col, id, data) { await updateDoc(doc(db, col, id), {...data
 async function fbSet(col, id, data) { await setDoc(doc(db, col, id), {...data, _ts: serverTimestamp()}, {merge:true}); }
 async function fbDel(col, id) { await deleteDoc(doc(db, col, id)); }
 
-var DB = { alumnos:[], pagos:[], cuotas:[], asistencias:[], cursos:[], horario_grupos:[], egresos:[], cat_egreso:[], cat_pag_for:[], cat_pag_est:[], cat_pag_form:[] };
+var DB = { alumnos:[], pagos:[], cuotas:[], asistencias:[], cursos:[], horario_grupos:[], egresos:[], cat_egreso:[], cat_pag_for:[], cat_pag_est:[], cat_pag_form:[], cat_pag_cur:[] };
 
 function listenCol(col, key, cb) {
   const q = query(collection(db, col), orderBy("_ts", "desc"));
@@ -145,6 +145,7 @@ function initApp() {
   listenCol("horario_grupos", "horario_grupos", function(){ if(document.getElementById('page-horarios_aulas').classList.contains('active')) window.renderHorariosPage(); });
   listenCol("egresos",        "egresos",        function(){ if(document.getElementById('page-egresos').classList.contains('active')) renderEgresos(); renderDash(); });
   listenCol("cat_egreso",     "cat_egreso",     function(){ poblarSelects(); if(document.getElementById('page-egresos').classList.contains('active')) renderEgresos(); });
+  listenCol("cat_pag_cur",    "cat_pag_cur",    function(){ poblarSelectsPag(); if(document.getElementById('page-pagos').classList.contains('active')) renderPagos(); });
   listenCol("cat_pag_for",    "cat_pag_for",    function(){ poblarSelectsPag(); if(document.getElementById('page-pagos').classList.contains('active')) renderPagos(); });
   listenCol("cat_pag_est",    "cat_pag_est",    function(){ poblarSelectsPag(); if(document.getElementById('page-pagos').classList.contains('active')) renderPagos(); });
   listenCol("cat_pag_form",   "cat_pag_form",   function(){ poblarSelectsPag(); if(document.getElementById('page-pagos').classList.contains('active')) renderPagos(); });
@@ -544,8 +545,8 @@ function poblarSelectsPag(){
 }
 
 function renderCatPagListas(){
-  var tipos={for:'cat-pag-for-lista',est:'cat-pag-est-lista',form:'cat-pag-form-lista'};
-  var cols={for:DB.cat_pag_for,est:DB.cat_pag_est,form:DB.cat_pag_form};
+  var tipos={cur:'cat-pag-cur-lista',for:'cat-pag-for-lista',est:'cat-pag-est-lista',form:'cat-pag-form-lista'};
+  var cols={cur:DB.cat_pag_cur,for:DB.cat_pag_for,est:DB.cat_pag_est,form:DB.cat_pag_form};
   Object.keys(tipos).forEach(function(t){
     var el=document.getElementById(tipos[t]);if(!el)return;
     var cats=cols[t].slice().sort(function(a,b){return(a.nombre||'').localeCompare(b.nombre||'')});
