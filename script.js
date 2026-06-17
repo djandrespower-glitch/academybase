@@ -31,7 +31,7 @@ async function fbUpd(col, id, data) { await updateDoc(doc(db, col, id), {...data
 async function fbSet(col, id, data) { await setDoc(doc(db, col, id), {...data, _ts: serverTimestamp()}, {merge:true}); }
 async function fbDel(col, id) { await deleteDoc(doc(db, col, id)); }
 
-var DB = { alumnos:[], pagos:[], cuotas:[], asistencias:[], cursos:[], horario_grupos:[], egresos:[], cat_egreso:[], cat_pag_for:[], cat_pag_est:[], cat_pag_form:[], cat_pag_cur:[] };
+var DB = { alumnos:[], pagos:[], cuotas:[], asistencias:[], cursos:[], horario_grupos:[], egresos:[], cat_egreso:[], cat_pag_for:[], cat_pag_est:[], cat_pag_form:[], cat_pag_cur:[], colaboradores:[] };
 
 function listenCol(col, key, cb) {
   const q = query(collection(db, col), orderBy("_ts", "desc"));
@@ -163,6 +163,7 @@ function initApp() {
   listenCol("horario_grupos", "horario_grupos", function(){ if(document.getElementById('page-horarios_aulas').classList.contains('active')) window.renderHorariosPage(); });
   listenCol("egresos",        "egresos",        function(){ if(document.getElementById('page-egresos').classList.contains('active')) renderEgresos(); renderDash(); renderChartPorRol(rolActual||'admin'); });
   listenCol("cat_egreso",     "cat_egreso",     function(){ poblarSelects(); if(document.getElementById('page-egresos').classList.contains('active')) renderEgresos(); });
+  listenCol("colaboradores",  "colaboradores", function(){ if(document.getElementById('page-colaboradores').classList.contains('active')) renderColaboradores(); });
   listenCol("cat_pag_cur",    "cat_pag_cur",    function(){ poblarSelectsPag(); if(document.getElementById('page-pagos').classList.contains('active')) renderPagos(); });
   listenCol("cat_pag_for",    "cat_pag_for",    function(){ poblarSelectsPag(); if(document.getElementById('page-pagos').classList.contains('active')) renderPagos(); });
   listenCol("cat_pag_est",    "cat_pag_est",    function(){ poblarSelectsPag(); if(document.getElementById('page-pagos').classList.contains('active')) renderPagos(); });
@@ -266,7 +267,7 @@ window.showPage=function(id,el){
   document.querySelectorAll('.ni').forEach(function(n){n.classList.remove('active')});
   document.getElementById('page-'+id).classList.add('active');
   if(el)el.classList.add('active');
-  var T={dashboard:'Dashboard',alertas:'Alertas',alumnos:'Alumnos',cursos:'Cursos',asistencia:'Asistencia',pagos:'Pagos',egresos:'Egresos',reporte:'Reportes',horarios_aulas:'Horarios por Cursos',exportar:'Exportar Base'};
+  var T={dashboard:'Dashboard',alertas:'Alertas',alumnos:'Alumnos',cursos:'Cursos',colaboradores:'Colaboradores',asistencia:'Asistencia',pagos:'Pagos',egresos:'Egresos',reporte:'Reportes',horarios_aulas:'Horarios por Cursos',exportar:'Exportar Base'};
   document.getElementById('page-title').textContent=T[id]||id;
   var ac=document.getElementById('topbar-acts');
   var logoutBtn=document.getElementById('_logout_btn');
@@ -276,6 +277,7 @@ window.showPage=function(id,el){
   if(id==='pagos')ac.innerHTML='<button class="btn bp bsm" onclick="openMPag()">+ Registrar pago</button>';
   if(id==='cursos')ac.innerHTML='<button class="btn bp bsm" onclick="openMCur()">+ Nuevo curso</button>';
   if(id==='egresos')ac.innerHTML='<button class="btn bp bsm" onclick="openMEg()">+ Nuevo egreso</button>';
+  if(id==='colaboradores')ac.innerHTML='<button class="btn bp bsm" onclick="openMCol()">+ Nuevo colaborador</button>';
   if(logoutBtn){ac.appendChild(logoutBtn)}
   else if(rolActual){
     var btn=document.createElement('button');btn.id='_logout_btn';btn.className='btn bo bsm';
@@ -283,7 +285,7 @@ window.showPage=function(id,el){
   }
   // Re-append user label
   if(userLbl){ac.appendChild(userLbl)}
-  var fns={dashboard:renderDash,alertas:renderAlertas,alumnos:renderAlumnos,cursos:renderCursos,pagos:renderPagos,egresos:renderEgresos,reporte:renderReporte,asistencia:renderAsistencia,horarios_aulas:window.initHorariosPage,exportar:function(){}};
+  var fns={dashboard:renderDash,alertas:renderAlertas,alumnos:renderAlumnos,cursos:renderCursos,colaboradores:renderColaboradores,pagos:renderPagos,egresos:renderEgresos,reporte:renderReporte,asistencia:renderAsistencia,horarios_aulas:window.initHorariosPage,exportar:function(){}};
   if(fns[id])fns[id]();
 }
 
@@ -1010,6 +1012,140 @@ window.updGrupo=async function(id){
   var sel=document.getElementById('_has');
   await fbUpd('horario_grupos',id,{instructor:document.getElementById('_hi').value.trim(),alumnos:sel?Array.from(sel.selectedOptions).map(function(o){return o.value}):[],fechaIni:document.getElementById('_hfi').value,fechaFin:document.getElementById('_hff').value});
   var t=document.getElementById('_hm');if(t)t.remove();window.renderHorariosPage();
+}
+
+
+// ── COLABORADORES ─────────────────────────────────────────
+var _selColId=null, _fotoCol=null, _editColId=null;
+
+window.prevFotoCol=function(ev){
+  var f=ev.target.files[0];if(!f)return;
+  var r=new FileReader();
+  r.onload=function(e){
+    var img=new Image();
+    img.onload=function(){
+      var c=document.createElement('canvas'),w=img.width,h=img.height,mx=200;
+      if(w>h){if(w>mx){h=h*mx/w;w=mx}}else{if(h>mx){w=w*mx/h;h=mx}}
+      c.width=w;c.height=h;c.getContext('2d').drawImage(img,0,0,w,h);
+      _fotoCol=c.toDataURL('image/jpeg',.7);
+      var pi=document.getElementById('col-ph-img');pi.src=_fotoCol;pi.style.display='block';
+      document.getElementById('col-ph-icon').style.display='none';
+    };img.src=e.target.result;
+  };r.readAsDataURL(f);
+}
+
+window.openMCol=function(id){
+  id=id||null;_editColId=id;_fotoCol=null;
+  document.getElementById('col-ph-img').style.display='none';
+  document.getElementById('col-ph-icon').style.display='';
+  document.getElementById('m-col-tit').textContent=id?'Editar colaborador':'Nuevo colaborador';
+  document.getElementById('col-del-btn').style.display=id?'inline-block':'none';
+  ['col-nom','col-cargo','col-rh','col-cel','col-mail','col-ini','col-fin','col-dir','col-ref','col-obs'].forEach(function(k){
+    var el=document.getElementById(k);if(el)el.value='';
+  });
+  if(id){
+    var c=DB.colaboradores.find(function(x){return x.id===id});
+    if(c){
+      var map={nom:'nombre',cargo:'cargo',rh:'rh',cel:'celular',mail:'email',ini:'ingreso',fin:'egreso',dir:'direccion',ref:'referencia',obs:'observaciones'};
+      Object.keys(map).forEach(function(k){var el=document.getElementById('col-'+k);if(el&&c[map[k]]!=null)el.value=c[map[k]]});
+      if(c.foto){_fotoCol=c.foto;var img=document.getElementById('col-ph-img');img.src=_fotoCol;img.style.display='block';document.getElementById('col-ph-icon').style.display='none';}
+    }
+  } else {
+    document.getElementById('col-ini').value=new Date().toISOString().split('T')[0];
+  }
+  openM('m-col');
+}
+
+window.saveColaborador=async function(){
+  var nom=document.getElementById('col-nom').value.trim();
+  if(!nom){alert('Nombre requerido.');return}
+  var data={
+    nombre:nom,
+    cargo:document.getElementById('col-cargo').value.trim(),
+    rh:document.getElementById('col-rh').value.trim(),
+    celular:document.getElementById('col-cel').value.trim(),
+    email:document.getElementById('col-mail').value.trim(),
+    ingreso:document.getElementById('col-ini').value,
+    egreso:document.getElementById('col-fin').value,
+    direccion:document.getElementById('col-dir').value.trim(),
+    referencia:document.getElementById('col-ref').value.trim(),
+    observaciones:document.getElementById('col-obs').value.trim(),
+    foto:_fotoCol||null
+  };
+  if(_editColId){await fbUpd('colaboradores',_editColId,data)}
+  else{data.creado=new Date().toISOString().split('T')[0];await fbAdd('colaboradores',data)}
+  closeM('m-col');
+}
+
+window.delColaboradorM=function(){
+  if(!_editColId)return;var id=_editColId;
+  confirmDel('Eliminar este colaborador?',async function(){await fbDel('colaboradores',id);closeM('m-col');});
+}
+
+window.renderColaboradores=function(){
+  var q=(document.getElementById('q-col').value||'').toLowerCase();
+  var fc=document.getElementById('f-col-cargo').value;
+  // Poblar filtro cargos
+  var fCargo=document.getElementById('f-col-cargo');
+  if(fCargo){
+    var pv=fCargo.value;
+    var cargos=[...new Set(DB.colaboradores.map(function(c){return c.cargo||''}).filter(Boolean))].sort();
+    fCargo.innerHTML='<option value="">Todos los cargos</option>';
+    cargos.forEach(function(c){fCargo.innerHTML+='<option value="'+c+'">'+c+'</option>'});
+    fCargo.value=pv;
+  }
+  var list=DB.colaboradores.filter(function(c){
+    if(q&&!c.nombre.toLowerCase().includes(q)&&!(c.cargo||'').toLowerCase().includes(q))return false;
+    if(fc&&c.cargo!==fc)return false;
+    return true;
+  });
+  var tb=document.getElementById('t-col');
+  if(!tb)return;
+  tb.innerHTML=list.map(function(c){
+    return'<tr style="cursor:pointer" onclick="selColaborador(\''+c.id+'\',\''+c.nombre.replace(/'/g,'')+'\')">'
+      +'<td>'+avEl(c)+'</td>'
+      +'<td><div style="font-weight:500">'+c.nombre+'</div></td>'
+      +'<td><span class="bdg" style="background:#dbeafe;color:#1e40af;font-size:11px">'+(c.cargo||'-')+'</span></td>'
+      +'<td>'+(c.celular||'-')+'</td>'
+      +'<td style="font-size:12px;color:#666">'+(c.email||'-')+'</td>'
+      +'<td style="font-size:12px">'+(c.ingreso||'-')+'</td>'
+      +'<td><span style="font-size:11px;color:#aaa">Acciones</span></td>'
+      +'</tr>';
+  }).join('')||'<tr><td colspan="7" style="text-align:center;color:#aaa;padding:24px">Sin colaboradores</td></tr>';
+}
+
+window.selColaborador=function(id,nom){
+  _selColId=id;
+  document.getElementById('col-panel-info').textContent=nom;
+  document.getElementById('col-panel').style.display='block';
+}
+window.closeColPanel=function(){_selColId=null;document.getElementById('col-panel').style.display='none';}
+window.doColEdit=function(){var id=_selColId;closeColPanel();if(id)openMCol(id);}
+window.doColDel=function(){
+  if(!_selColId)return;var id=_selColId;closeColPanel();
+  confirmDel('Eliminar este colaborador?',async function(){await fbDel('colaboradores',id);});
+}
+window.doColVer=function(){
+  var id=_selColId;closeColPanel();if(!id)return;
+  var c=DB.colaboradores.find(function(x){return x.id===id});if(!c)return;
+  var avatarHtml=c.foto
+    ?'<img src="'+c.foto+'" onclick="window.zoomFoto(\''+c.foto+'\')" style="width:72px;height:72px;border-radius:50%;object-fit:cover;cursor:zoom-in;transition:transform .2s" onmouseover="this.style.transform=\'scale(1.1)\'" onmouseout="this.style.transform=\'scale(1)\'">'
+    :avEl(c,72);
+  document.getElementById('m-col-ver-body').innerHTML=
+    '<div style="display:flex;align-items:center;gap:16px;margin-bottom:18px">'+avatarHtml
+    +'<div><div style="font-size:17px;font-weight:600">'+c.nombre+'</div>'
+    +'<div style="font-size:13px;color:#888">'+(c.cargo||'Sin cargo')+'</div></div></div>'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px">'
+    +'<div><span style="color:#888">Celular:</span> '+(c.celular||'-')+'</div>'
+    +'<div><span style="color:#888">Email:</span> '+(c.email||'-')+'</div>'
+    +'<div><span style="color:#888">RH:</span> '+(c.rh||'-')+'</div>'
+    +'<div><span style="color:#888">Ingreso:</span> '+(c.ingreso||'-')+'</div>'
+    +'<div><span style="color:#888">Egreso:</span> '+(c.egreso||'-')+'</div>'
+    +'<div style="grid-column:1/-1"><span style="color:#888">Dirección:</span> '+(c.direccion||'-')+'</div>'
+    +'<div style="grid-column:1/-1"><span style="color:#888">Referencia:</span> '+(c.referencia||'-')+'</div>'
+    +(c.observaciones?'<div style="grid-column:1/-1"><span style="color:#888">Observaciones:</span> '+c.observaciones+'</div>':'')
+    +'</div>';
+  openM('m-col-ver');
 }
 
 // ── EXPORTAR ──────────────────────────────────────────────
