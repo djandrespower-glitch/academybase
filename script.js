@@ -290,7 +290,7 @@ window.showPage=function(id,el){
 // ── DASHBOARD ─────────────────────────────────────────────
 function renderDash(){
   var now=new Date(),m=now.getMonth(),y=now.getFullYear();
-  var totM=DB.pagos.filter(function(p){if(!p.fecha||p.estado!=='Pagado')return false;var d=new Date(p.fecha);return d.getMonth()===m&&d.getFullYear()===y}).reduce(function(s,p){return s+p.monto},0);
+  var totM=DB.pagos.filter(function(p){if(!p.fecha)return false;var d=new Date(p.fecha);return d.getMonth()===m&&d.getFullYear()===y}).reduce(function(s,p){return s+(parseFloat(p.monto)||0)},0);
   document.getElementById('s-act').textContent=DB.alumnos.length;
   document.getElementById('s-mes').textContent='$'+totM.toLocaleString('es-CO');
   document.getElementById('s-pen').textContent=DB.cuotas.length;
@@ -871,7 +871,7 @@ window.renderAsistencia=function renderAsistencia(){
 window.renderReporte=function renderReporte(){
   var fAl=document.getElementById('r-al').value,fCur=document.getElementById('r-cur').value,fEst=document.getElementById('r-est').value,fMes=document.getElementById('r-mes').value;
   var list=DB.pagos.filter(function(p){if(fAl&&p.alumnoId!==fAl)return false;if(fCur){var a=gA(p.alumnoId);if(!a||a.moduloId!==fCur)return false}if(fEst&&p.estado!==fEst)return false;if(fMes&&p.fecha&&p.fecha.slice(0,7)!==fMes)return false;return true});
-  var ingresos=list.filter(function(p){return p.estado==='Pagado'}).reduce(function(s,p){return s+p.monto},0);
+  var ingresos=list.reduce(function(s,p){return s+(parseFloat(p.monto)||0)},0);
   var pen=DB.cuotas.reduce(function(s,c){return s+parseFloat(c.monto||0)},0);
   // Egresos del mismo mes filtrado
   var egList=DB.egresos.filter(function(e){if(fMes&&e.fecha&&e.fecha.slice(0,7)!==fMes)return false;return true});
@@ -889,6 +889,40 @@ window.renderReporte=function renderReporte(){
   var uEgEl=document.getElementById('r-egresos');
   if(uEgEl)uEgEl.textContent='$'+egresos.toLocaleString('es-CO');
   document.getElementById('t-rep').innerHTML=list.map(function(p){return'<tr><td>'+gAN(p.alumnoId)+'</td><td>'+gAC(p.alumnoId)+'</td><td>'+(p.periodo||'-')+'</td><td>'+(p.forma||'-')+'</td><td>$'+(p.monto||0).toLocaleString('es-CO')+'</td><td>'+bdg(p.estado)+'</td><td>'+(p.fecha||'-')+'</td></tr>'}).join('')||'<tr><td colspan="7" style="text-align:center;color:#aaa;padding:20px">Sin registros</td></tr>';
+  renderRepChart();
+}
+
+function renderRepChart(){
+  var el=document.getElementById('rep-chart');if(!el)return;
+  var now=new Date(),m=now.getMonth(),y=now.getFullYear();
+  var meses=[];
+  for(var i=5;i>=0;i--){var d=new Date(y,m-i,1);meses.push({lbl:d.toLocaleString('es-CO',{month:'short'}),m:d.getMonth(),y:d.getFullYear()})}
+  var ingresos=meses.map(function(x){
+    return DB.pagos.filter(function(p){if(!p.fecha)return false;var d=new Date(p.fecha);return d.getMonth()===x.m&&d.getFullYear()===x.y}).reduce(function(s,p){return s+(parseFloat(p.monto)||0)},0);
+  });
+  var egresos=meses.map(function(x){
+    return DB.egresos.filter(function(e){if(!e.fecha)return false;var d=new Date(e.fecha);return d.getMonth()===x.m&&d.getFullYear()===x.y}).reduce(function(s,e){return s+(parseFloat(e.valor)||0)},0);
+  });
+  var mx=Math.max.apply(null,ingresos.concat(egresos).concat([1]));
+  el.innerHTML=meses.map(function(x,i){
+    var hi=Math.max(4,Math.round(ingresos[i]/mx*180));
+    var he=Math.max(4,Math.round(egresos[i]/mx*180));
+    var li=ingresos[i]?'$'+Math.round(ingresos[i]/1000)+'k':'';
+    var le=egresos[i]?'$'+Math.round(egresos[i]/1000)+'k':'';
+    return'<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px">'
+      +'<div style="display:flex;align-items:flex-end;gap:3px;height:180px">'
+        +'<div style="display:flex;flex-direction:column;align-items:center;justify-content:flex-end">'
+          +'<span style="font-size:10px;color:#c0392b;font-weight:700;margin-bottom:4px">'+li+'</span>'
+          +'<div style="width:36px;background:linear-gradient(180deg,#e74c3c,#c0392b);border-radius:6px 6px 0 0;height:'+hi+'px;box-shadow:0 4px 12px rgba(192,57,43,.45)"></div>'
+        +'</div>'
+        +'<div style="display:flex;flex-direction:column;align-items:center;justify-content:flex-end">'
+          +'<span style="font-size:10px;color:#374151;font-weight:700;margin-bottom:4px">'+le+'</span>'
+          +'<div style="width:36px;background:linear-gradient(180deg,#4b5563,#1f2937);border-radius:6px 6px 0 0;height:'+he+'px;box-shadow:0 4px 12px rgba(31,41,55,.45)"></div>'
+        +'</div>'
+      +'</div>'
+      +'<div style="font-size:11px;color:#888;margin-top:4px">'+x.lbl+'</div>'
+    +'</div>';
+  }).join('');
 }
 window.printRep=function(){var t=document.getElementById('rep-wrap');var w=window.open('','_blank');w.document.write('<!DOCTYPE html><html><head><title>Reporte</title><style>body{font-family:system-ui;font-size:13px}table{width:100%;border-collapse:collapse}th,td{padding:8px;border:1px solid #ddd;text-align:left}th{background:#f0f0f0}</style></head><body><h2>Reporte Financiero - Deejay Academy</h2>'+t.innerHTML+'</body></html>');w.document.close();w.print()}
 
