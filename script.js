@@ -31,7 +31,7 @@ async function fbUpd(col, id, data) { await updateDoc(doc(db, col, id), {...data
 async function fbSet(col, id, data) { await setDoc(doc(db, col, id), {...data, _ts: serverTimestamp()}, {merge:true}); }
 async function fbDel(col, id) { await deleteDoc(doc(db, col, id)); }
 
-var DB = { alumnos:[], pagos:[], cuotas:[], asistencias:[], cursos:[], horario_grupos:[], egresos:[], cat_egreso:[], cat_pag_for:[], cat_pag_est:[], cat_pag_form:[], cat_pag_cur:[], colaboradores:[] };
+var DB = { alumnos:[], pagos:[], cuotas:[], asistencias:[], cursos:[], horario_grupos:[], egresos:[], cat_egreso:[], cat_pag_for:[], cat_pag_est:[], cat_pag_form:[], cat_pag_cur:[], colaboradores:[], calendario_plan:[] };
 
 function listenCol(col, key, cb) {
   const q = query(collection(db, col), orderBy("_ts", "desc"));
@@ -164,6 +164,7 @@ function initApp() {
   listenCol("egresos",        "egresos",        function(){ if(document.getElementById('page-egresos').classList.contains('active')) renderEgresos(); renderDash(); renderChartPorRol(rolActual||'admin'); });
   listenCol("cat_egreso",     "cat_egreso",     function(){ poblarSelects(); if(document.getElementById('page-egresos').classList.contains('active')) renderEgresos(); });
   listenCol("colaboradores",  "colaboradores", function(){ if(document.getElementById('page-colaboradores').classList.contains('active')) renderColaboradores(); });
+  listenCol("calendario_plan","calendario_plan",function(){ if(document.getElementById('page-calendario').classList.contains('active')) renderCalPlan(); });
   listenCol("cat_pag_cur",    "cat_pag_cur",    function(){ poblarSelectsPag(); if(document.getElementById('page-pagos').classList.contains('active')) renderPagos(); });
   listenCol("cat_pag_for",    "cat_pag_for",    function(){ poblarSelectsPag(); if(document.getElementById('page-pagos').classList.contains('active')) renderPagos(); });
   listenCol("cat_pag_est",    "cat_pag_est",    function(){ poblarSelectsPag(); if(document.getElementById('page-pagos').classList.contains('active')) renderPagos(); });
@@ -267,7 +268,7 @@ window.showPage=function(id,el){
   document.querySelectorAll('.ni').forEach(function(n){n.classList.remove('active')});
   document.getElementById('page-'+id).classList.add('active');
   if(el)el.classList.add('active');
-  var T={dashboard:'Dashboard',alertas:'Alertas',alumnos:'Alumnos',cursos:'Cursos',colaboradores:'Colaboradores',asistencia:'Asistencia',pagos:'Pagos',egresos:'Egresos',reporte:'Reportes',horarios_aulas:'Horarios por Cursos',exportar:'Exportar Base'};
+  var T={dashboard:'Dashboard',alertas:'Alertas',alumnos:'Alumnos',cursos:'Cursos',colaboradores:'Colaboradores',asistencia:'Asistencia',pagos:'Pagos',egresos:'Egresos',reporte:'Reportes',horarios_aulas:'Horarios por Cursos',calendario:'Calendario Académico',exportar:'Exportar Base'};
   document.getElementById('page-title').textContent=T[id]||id;
   var ac=document.getElementById('topbar-acts');
   var logoutBtn=document.getElementById('_logout_btn');
@@ -285,7 +286,7 @@ window.showPage=function(id,el){
   }
   // Re-append user label
   if(userLbl){ac.appendChild(userLbl)}
-  var fns={dashboard:renderDash,alertas:renderAlertas,alumnos:renderAlumnos,cursos:renderCursos,colaboradores:renderColaboradores,pagos:renderPagos,egresos:renderEgresos,reporte:renderReporte,asistencia:renderAsistencia,horarios_aulas:window.initHorariosPage,exportar:function(){}};
+  var fns={dashboard:renderDash,alertas:renderAlertas,alumnos:renderAlumnos,cursos:renderCursos,colaboradores:renderColaboradores,pagos:renderPagos,egresos:renderEgresos,reporte:renderReporte,asistencia:renderAsistencia,horarios_aulas:window.initHorariosPage,calendario:window.renderCalPlan,exportar:function(){}};
   if(fns[id])fns[id]();
 }
 
@@ -1173,6 +1174,49 @@ window.doColVer=function(){
     +(c.observaciones?'<div style="grid-column:1/-1"><span style="color:#888">Observaciones:</span> '+c.observaciones+'</div>':'')
     +'</div>';
   openM('m-col-ver');
+}
+
+// ── CALENDARIO ACADÉMICO (planificación por curso) ────────
+function poblarCalpCurso(){
+  var sel=document.getElementById('calp-curso');if(!sel)return;
+  var pv=sel.value;
+  sel.innerHTML='';
+  DB.cursos.forEach(function(c){sel.innerHTML+='<option value="'+c.id+'">'+c.nombre+'</option>'});
+  if(pv&&DB.cursos.find(function(c){return c.id===pv}))sel.value=pv;
+}
+
+var MESES_CALP=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+var CAMPOS_CALP=['n1i','n1f','n2i','n2f','n3i','n3f','n4i','n4f'];
+
+window.renderCalPlan=function(){
+  poblarCalpCurso();
+  var cursoId=document.getElementById('calp-curso').value;
+  var anioInp=document.getElementById('calp-anio');
+  if(!anioInp.value)anioInp.value=new Date().getFullYear();
+  var anio=anioInp.value;
+  var tb=document.getElementById('calp-body');if(!tb)return;
+  if(!cursoId){tb.innerHTML='<tr><td colspan="9" style="text-align:center;color:#aaa;padding:20px">Selecciona un curso</td></tr>';return;}
+  var docId=cursoId+'_'+anio;
+  var datos=DB.calendario_plan.find(function(d){return d.id===docId});
+  tb.innerHTML=MESES_CALP.map(function(mes,mi){
+    var fila=(datos&&datos.meses&&datos.meses[mi])||{};
+    return'<tr style="border-bottom:1px solid #222">'
+      +'<td style="background:#1e3a5f;color:#93c5fd;font-weight:600;padding:8px;text-align:center">'+mes+'</td>'
+      +CAMPOS_CALP.map(function(campo){
+        var val=fila[campo]||'';
+        return'<td style="padding:4px;text-align:center;background:#0a0a0a"><input type="date" value="'+val+'" onchange="saveCalpCelda(\''+cursoId+'\','+anio+','+mi+',\''+campo+'\',this.value)" style="border:1px solid #333;background:#1a1a1a;color:#fff;border-radius:6px;padding:4px 6px;font-size:12px;width:100%;color-scheme:dark"></td>';
+      }).join('')
+      +'</tr>';
+  }).join('');
+}
+
+window.saveCalpCelda=async function(cursoId,anio,mesIdx,campo,valor){
+  var docId=cursoId+'_'+anio;
+  var existing=DB.calendario_plan.find(function(d){return d.id===docId});
+  var meses=existing&&existing.meses?existing.meses.slice():new Array(12).fill(null).map(function(){return{}});
+  if(!meses[mesIdx])meses[mesIdx]={};
+  meses[mesIdx][campo]=valor;
+  await fbSet('calendario_plan',docId,{cursoId:cursoId,anio:parseInt(anio),meses:meses});
 }
 
 // ── EXPORTAR ──────────────────────────────────────────────
