@@ -932,7 +932,7 @@ window.renderHorariosPage=function(){
       +'<div style="overflow-x:auto"><table style="border-collapse:separate;border-spacing:5px;width:100%"><thead><tr><th style="width:75px"></th>'+ths+'</tr></thead><tbody>'+rows+'</tbody></table></div>';
   }
   document.getElementById('horarios-root').innerHTML=
-    '<div style="background:#1a0533;border-radius:14px;padding:16px;min-height:500px">'
+    '<div style="background:#000000;border-radius:14px;padding:16px;min-height:500px">'
     +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;flex-wrap:wrap">'
     +'<select onchange="window.hMes=parseInt(this.value);window.renderHorariosPage()" style="background:#1f2937;color:#fff;border:1px solid #374151;border-radius:8px;padding:6px 12px;font-size:13px;outline:none;font-family:inherit">'+mesOpts+'</select>'
     +'<span style="color:#9ca3af;font-size:12px;margin-left:6px">inicia</span>'
