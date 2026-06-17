@@ -623,6 +623,10 @@
             <rect x="3" y="4" width="18" height="18" rx="2" />
             <line x1="3" y1="10" x2="21" y2="10" />
           </svg>Asistencia</div>
+        <div class="ni" onclick="showPage('colaboradores',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
+            <path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+          </svg>Colaboradores</div>
         <div class="ns">Finanzas</div>
         <div class="ni" onclick="showPage('pagos',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
             stroke-width="2">
@@ -746,6 +750,32 @@
             <div class="tw" style="overflow-x:auto">
               <div id="gantt-c" style="min-width:700px;padding:16px"></div>
             </div>
+          </div>
+        </div>
+
+        <!-- PÁGINA COLABORADORES -->
+        <div id="page-colaboradores" class="page">
+          <div class="tw">
+            <div class="ttb">
+              <input class="si" placeholder="Buscar colaborador..." id="q-col" oninput="renderColaboradores()">
+              <select class="fs" id="f-col-cargo" onchange="renderColaboradores()" style="width:160px">
+                <option value="">Todos los cargos</option>
+              </select>
+            </div>
+            <table>
+              <thead>
+                <tr>
+                  <th></th>
+                  <th>Nombre</th>
+                  <th>Cargo</th>
+                  <th>Teléfono</th>
+                  <th>Email</th>
+                  <th>Ingreso</th>
+                  <th>Acciones</th>
+                </tr>
+              </thead>
+              <tbody id="t-col"></tbody>
+            </table>
           </div>
         </div>
 
@@ -1245,6 +1275,72 @@
         </div>
       </div>
       <div class="mf"><button class="btn bo" onclick="closeM('m-cat-eg')">Cerrar</button></div>
+    </div>
+  </div>
+
+
+  <!-- Panel Colaborador -->
+  <div class="fixed-panel" id="col-panel">
+    <span style="font-size:12px;color:#aaa;display:block;margin-bottom:4px">Colaborador seleccionado:</span>
+    <b id="col-panel-info" style="color:#c0392b;font-size:13px"></b>
+    <div style="display:flex;gap:6px;margin-top:8px">
+      <button class="btn bo bsm" onclick="doColVer()">Ver Perfil</button>
+      <button class="btn bo bsm" onclick="doColEdit()">Editar</button>
+      <button class="btn bd bsm" onclick="doColDel()">Eliminar</button>
+      <button class="btn bo bsm" onclick="closeColPanel()" style="background:#333;color:#fff;border:none">X</button>
+    </div>
+  </div>
+
+  <!-- Modal Nuevo/Editar Colaborador -->
+  <div class="ov" id="m-col">
+    <div class="modal" style="max-width:560px">
+      <div class="mh">
+        <h3 id="m-col-tit">Nuevo colaborador</h3>
+        <button class="btn bo bsm" onclick="closeM('m-col')">X</button>
+      </div>
+      <div class="mb">
+        <div style="display:flex;gap:16px;align-items:flex-start;margin-bottom:16px">
+          <div>
+            <div id="col-ph-wrap" onclick="document.getElementById('col-foto-inp').click()"
+              style="width:80px;height:80px;border-radius:50%;background:#f0f0f0;cursor:pointer;display:flex;align-items:center;justify-content:center;overflow:hidden;border:2px dashed #ddd">
+              <span id="col-ph-icon" style="font-size:28px">📷</span>
+              <img id="col-ph-img" style="display:none;width:100%;height:100%;object-fit:cover">
+            </div>
+            <input type="file" id="col-foto-inp" accept="image/*" style="display:none" onchange="prevFotoCol(event)">
+          </div>
+          <div style="flex:1;display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <div class="fgp" style="grid-column:1/-1"><label>Nombres y Apellidos *</label><input id="col-nom" placeholder="Nombre completo"></div>
+            <div class="fgp"><label>Cargo</label><input id="col-cargo" placeholder="Ej: Instructor"></div>
+            <div class="fgp"><label>Tipo de sangre</label><input id="col-rh" placeholder="Ej: O+"></div>
+          </div>
+        </div>
+        <div class="fg" style="grid-template-columns:1fr 1fr">
+          <div class="fgp"><label>Celular</label><input id="col-cel" placeholder="+57..."></div>
+          <div class="fgp"><label>Email</label><input id="col-mail" type="email" placeholder="correo@..."></div>
+          <div class="fgp"><label>Fecha de ingreso</label><input id="col-ini" type="date"></div>
+          <div class="fgp"><label>Fecha de egreso</label><input id="col-fin" type="date"></div>
+          <div class="fgp" style="grid-column:1/-1"><label>Dirección residencia</label><input id="col-dir" placeholder="Dirección..."></div>
+          <div class="fgp" style="grid-column:1/-1"><label>Referencia familiar</label><input id="col-ref" placeholder="Nombre y teléfono de referencia"></div>
+          <div class="fgp" style="grid-column:1/-1"><label>Observaciones</label><textarea id="col-obs" placeholder="Notas adicionales..."></textarea></div>
+        </div>
+      </div>
+      <div class="mf">
+        <button class="btn bd" id="col-del-btn" style="margin-right:auto;display:none" onclick="delColaboradorM()">Eliminar</button>
+        <button class="btn bo" onclick="closeM('m-col')">Cancelar</button>
+        <button class="btn bp" onclick="saveColaborador()">Guardar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Ver Perfil Colaborador -->
+  <div class="ov" id="m-col-ver">
+    <div class="modal" style="max-width:480px">
+      <div class="mh">
+        <h3>Perfil del colaborador</h3>
+        <button class="btn bo bsm" onclick="closeM('m-col-ver')">X</button>
+      </div>
+      <div class="mb" id="m-col-ver-body"></div>
+      <div class="mf"><button class="btn bo" onclick="closeM('m-col-ver')">Cerrar</button></div>
     </div>
   </div>
 
