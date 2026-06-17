@@ -714,12 +714,12 @@ window.renderPagos=function renderPagos(){
   document.getElementById('t-pag').innerHTML=list.map(function(p){
     return'<tr style="cursor:pointer" onclick="selPago(\''+p.id+'\',\''+gAN(p.alumnoId).replace(/'/g,'')+'\')">'+
       '<td style="font-weight:500">'+gAN(p.alumnoId)+'</td>'+
-      '<td><span class="bdg" style="background:#ede9fe;color:#5b21b6;font-size:11px">'+(p.curso||'-')+'</span></td>'+
+      '<td><span class="bdg" style="background:'+colorCategoria(p.curso,'curso').bg+';color:'+colorCategoria(p.curso,'curso').fg+';font-size:11px">'+(p.curso||'-')+'</span></td>'+
       '<td style="font-weight:600;color:#15803d">$'+(parseFloat(p.monto)||0).toLocaleString('es-CO')+'</td>'+
       '<td style="color:#555">$'+(parseFloat(p.neto)||0).toLocaleString('es-CO')+'</td>'+
       '<td style="font-size:12px">'+(p.fecha||'-')+'</td>'+
-      '<td><span class="bdg" style="background:#dbeafe;color:#1e40af;font-size:11px">'+(p.forma||'-')+'</span></td>'+
-      '<td><span class="bdg" style="background:#dcfce7;color:#166534;font-size:11px">'+(p.estado||'-')+'</span></td>'+
+      '<td><span class="bdg" style="background:'+colorCategoria(p.forma,'forma').bg+';color:'+colorCategoria(p.forma,'forma').fg+';font-size:11px">'+(p.forma||'-')+'</span></td>'+
+      '<td><span class="bdg" style="background:'+colorCategoria(p.estado,'estado').bg+';color:'+colorCategoria(p.estado,'estado').fg+';font-size:11px">'+(p.estado||'-')+'</span></td>'+
       '<td style="color:#a16207;font-size:12px">'+(p.comision?'$'+parseFloat(p.comision).toLocaleString('es-CO'):'-')+'</td>'+
       '<td><span class="bdg" style="background:#fef9c3;color:#854d0e;font-size:11px">'+(p.formulario||'-')+'</span></td>'+
       '<td style="font-size:11px;color:#666;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+(p.notas||'-')+'</td>'+
@@ -782,6 +782,33 @@ window.doEgDel=function(){
   confirmDel('Eliminar este egreso?',async function(){await fbDel('egresos',id)});
 }
 
+var _catColorMaps={};
+var _catColorPalette=[
+  {bg:'#dbeafe',fg:'#1e40af'}, // azul
+  {bg:'#fef9c3',fg:'#854d0e'}, // amarillo
+  {bg:'#dcfce7',fg:'#166534'}, // verde
+  {bg:'#fce7f3',fg:'#9d174d'}, // rosa
+  {bg:'#e0e7ff',fg:'#3730a3'}, // indigo
+  {bg:'#ffedd5',fg:'#9a3412'}, // naranja
+  {bg:'#cffafe',fg:'#155e75'}, // cyan
+  {bg:'#fee2e2',fg:'#991b1b'}, // rojo
+  {bg:'#ede9fe',fg:'#5b21b6'}, // morado
+  {bg:'#d1fae5',fg:'#065f46'}, // esmeralda
+  {bg:'#fae8ff',fg:'#86198f'}, // fucsia
+  {bg:'#f3f4f6',fg:'#374151'}  // gris (sin categoría)
+];
+function colorCategoria(nombre,ns){
+  ns=ns||'default';
+  if(!_catColorMaps[ns])_catColorMaps[ns]={};
+  var map=_catColorMaps[ns];
+  var key=nombre||'Sin categoría';
+  if(map[key])return map[key];
+  var idx=Object.keys(map).length%_catColorPalette.length;
+  var c=_catColorPalette[idx];
+  map[key]=c;
+  return c;
+}
+
 function renderEgresos(){
   var q=(document.getElementById('q-eg').value||'').toLowerCase();
   var fc=document.getElementById('fe-cat').value;
@@ -807,7 +834,7 @@ function renderEgresos(){
     return'<tr style="cursor:pointer" onclick="selEgreso(\''+e.id+'\')">'
       +'<td>'+(e.fecha||'-')+'</td>'
       +'<td style="font-weight:500">'+(e.concepto||'-')+'</td>'
-      +'<td><span class="bdg" style="background:#ede9fe;color:#5b21b6;font-size:11px">'+(e.categoria||'Sin categoría')+'</span></td>'
+      +'<td><span class="bdg" style="background:'+colorCategoria(e.categoria,'egreso').bg+';color:'+colorCategoria(e.categoria,'egreso').fg+';font-size:11px">'+(e.categoria||'Sin categoría')+'</span></td>'
       +'<td style="font-weight:600;color:#b91c1c">$'+(parseFloat(e.valor)||0).toLocaleString('es-CO')+'</td>'
       +'<td style="font-size:11px;color:#aaa">'+(e.notas||'-')+'</td>'
       +'<td><span style="font-size:11px;color:#aaa">Acciones</span></td>'
