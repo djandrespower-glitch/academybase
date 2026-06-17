@@ -981,9 +981,10 @@
 
         <!-- PÁGINA CALENDARIO ACADÉMICO (planificación por curso y mes) -->
         <div id="page-calendario" class="page" style="background:#000000;min-height:100%;margin:-18px;padding:18px;color:#fff">
-          <div class="tw" style="padding:16px;background:#111;border:1px solid #222">
+          <div class="tw" style="padding:16px;background:#111;border:1px solid #222;margin-bottom:16px">
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px">
-              <div style="display:flex;align-items:center;gap:10px">
+              <div style="display:flex;align-items:center;gap:14px">
+                <h3 style="font-size:14px;font-weight:700;color:#dc2626;margin:0">● ENTRE SEMANA</h3>
                 <label style="font-size:12px;color:#aaa;font-weight:600">CURSO</label>
                 <select id="calp-curso" class="fs" onchange="renderCalPlan()" style="min-width:220px;background:#1a1a1a;color:#fff;border:1px solid #333"></select>
               </div>
@@ -997,17 +998,49 @@
                 <thead>
                   <tr>
                     <th style="background:#dc2626;color:#fff;padding:10px;font-size:13px">MESES</th>
-                    <th style="background:#1e3a5f;color:#93c5fd;padding:8px;font-size:12px">INICIO<br>Nivel I</th>
-                    <th style="background:#1e3a5f;color:#93c5fd;padding:8px;font-size:12px">FINAL<br>Nivel I</th>
-                    <th style="background:#5f3a1e;color:#fed7aa;padding:8px;font-size:12px">INICIO<br>Nivel II</th>
-                    <th style="background:#5f3a1e;color:#fed7aa;padding:8px;font-size:12px">FINAL<br>Nivel II</th>
-                    <th style="background:#1e2f5f;color:#bfdbfe;padding:8px;font-size:12px">INICIO<br>Nivel III</th>
-                    <th style="background:#1e2f5f;color:#bfdbfe;padding:8px;font-size:12px">FINAL<br>Nivel III</th>
-                    <th style="background:#4a1e3f;color:#f3d9e8;padding:8px;font-size:12px">INICIO<br>Nivel IV</th>
-                    <th style="background:#4a1e3f;color:#f3d9e8;padding:8px;font-size:12px">FINAL<br>Nivel IV</th>
+                    <th style="background:#14532d;color:#86efac;padding:8px;font-size:12px">INICIO<br>Nivel I</th>
+                    <th style="background:#14532d;color:#86efac;padding:8px;font-size:12px">FINAL<br>Nivel I</th>
+                    <th style="background:#713f12;color:#fde047;padding:8px;font-size:12px">INICIO<br>Nivel II</th>
+                    <th style="background:#713f12;color:#fde047;padding:8px;font-size:12px">FINAL<br>Nivel II</th>
+                    <th style="background:#164e63;color:#67e8f9;padding:8px;font-size:12px">INICIO<br>Nivel III</th>
+                    <th style="background:#164e63;color:#67e8f9;padding:8px;font-size:12px">FINAL<br>Nivel III</th>
+                    <th style="background:#831843;color:#f9a8d4;padding:8px;font-size:12px">INICIO<br>Nivel IV</th>
+                    <th style="background:#831843;color:#f9a8d4;padding:8px;font-size:12px">FINAL<br>Nivel IV</th>
                   </tr>
                 </thead>
                 <tbody id="calp-body"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="tw" style="padding:16px;background:#111;border:1px solid #222">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px">
+              <div style="display:flex;align-items:center;gap:14px">
+                <h3 style="font-size:14px;font-weight:700;color:#1d4ed8;margin:0">● FINES DE SEMANA</h3>
+                <label style="font-size:12px;color:#aaa;font-weight:600">CURSO</label>
+                <select id="calp-curso-fs" class="fs" onchange="renderCalPlanFS()" style="min-width:220px;background:#1a1a1a;color:#fff;border:1px solid #333"></select>
+              </div>
+              <div style="display:flex;align-items:center;gap:10px">
+                <label style="font-size:12px;color:#aaa;font-weight:600">AÑO</label>
+                <input type="number" id="calp-anio-fs" class="fs" style="width:90px;background:#1a1a1a;color:#fff;border:1px solid #333" onchange="renderCalPlanFS()">
+              </div>
+            </div>
+            <div style="overflow-x:auto">
+              <table style="min-width:1000px;border-collapse:collapse">
+                <thead>
+                  <tr>
+                    <th style="background:#1d4ed8;color:#fff;padding:10px;font-size:13px">MESES</th>
+                    <th style="background:#14532d;color:#86efac;padding:8px;font-size:12px">INICIO<br>Nivel I</th>
+                    <th style="background:#14532d;color:#86efac;padding:8px;font-size:12px">FINAL<br>Nivel I</th>
+                    <th style="background:#713f12;color:#fde047;padding:8px;font-size:12px">INICIO<br>Nivel II</th>
+                    <th style="background:#713f12;color:#fde047;padding:8px;font-size:12px">FINAL<br>Nivel II</th>
+                    <th style="background:#164e63;color:#67e8f9;padding:8px;font-size:12px">INICIO<br>Nivel III</th>
+                    <th style="background:#164e63;color:#67e8f9;padding:8px;font-size:12px">FINAL<br>Nivel III</th>
+                    <th style="background:#831843;color:#f9a8d4;padding:8px;font-size:12px">INICIO<br>Nivel IV</th>
+                    <th style="background:#831843;color:#f9a8d4;padding:8px;font-size:12px">FINAL<br>Nivel IV</th>
+                  </tr>
+                </thead>
+                <tbody id="calp-body-fs"></tbody>
               </table>
             </div>
           </div>
