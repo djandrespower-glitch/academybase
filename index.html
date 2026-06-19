@@ -670,6 +670,10 @@
             <line x1="1" y1="10" x2="23" y2="10" />
           </svg>Ingresos</div>
         <div class="ni" onclick="showPage('egresos',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>Egresos</div>
+        <div class="ni" onclick="showPage('caja',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="3"/>
+            <path d="M6 12h.01M18 12h.01"/>
+          </svg>Efectivo / Caja</div>
         <div class="ni" onclick="showPage('reporte',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
             stroke-width="2">
             <line x1="18" y1="20" x2="18" y2="10" />
@@ -876,6 +880,64 @@
                 </thead>
                 <tbody id="t-pag"></tbody>
               </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- PÁGINA EFECTIVO / CAJA -->
+        <div id="page-caja" class="page">
+          <div class="tw" style="padding:16px">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px">
+              <h3 style="font-size:14px;margin:0">Movimientos de caja menor (efectivo)</h3>
+              <input type="month" id="caja-mes" class="fs" onchange="renderCaja()" style="width:160px">
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:0;border:1px solid #e5e7eb;border-radius:10px;overflow:hidden">
+              <!-- INGRESOS -->
+              <div style="border-right:1px solid #e5e7eb">
+                <div style="background:#dbeafe;padding:10px 14px;font-weight:700;font-size:13px;color:#1e40af">CASH INGRESO</div>
+                <table style="width:100%">
+                  <thead>
+                    <tr style="background:#eff6ff">
+                      <th style="padding:8px;font-size:11px;width:100px">Fecha</th>
+                      <th style="padding:8px;font-size:11px">Concepto</th>
+                      <th style="padding:8px;font-size:11px;width:110px">Valor</th>
+                      <th style="width:30px"></th>
+                    </tr>
+                  </thead>
+                  <tbody id="caja-ing-body"></tbody>
+                </table>
+                <div style="padding:8px 14px">
+                  <button class="btn bo bsm" onclick="addCajaFila('ingreso')">+ Agregar ingreso</button>
+                </div>
+                <div style="padding:10px 14px;background:#eff6ff;font-weight:700;font-size:13px;color:#1e40af;text-align:right">
+                  Total ingreso: <span id="caja-tot-ing">$0</span>
+                </div>
+              </div>
+              <!-- EGRESOS -->
+              <div>
+                <div style="background:#fee2e2;padding:10px 14px;font-weight:700;font-size:13px;color:#991b1b">CASH EGRESO</div>
+                <table style="width:100%">
+                  <thead>
+                    <tr style="background:#fef2f2">
+                      <th style="padding:8px;font-size:11px;width:100px">Fecha</th>
+                      <th style="padding:8px;font-size:11px">Concepto</th>
+                      <th style="padding:8px;font-size:11px;width:110px">Valor</th>
+                      <th style="width:30px"></th>
+                    </tr>
+                  </thead>
+                  <tbody id="caja-eg-body"></tbody>
+                </table>
+                <div style="padding:8px 14px">
+                  <button class="btn bo bsm" onclick="addCajaFila('egreso')">+ Agregar egreso</button>
+                </div>
+                <div style="padding:10px 14px;background:#fef2f2;font-weight:700;font-size:13px;color:#991b1b;text-align:right">
+                  Total egreso: <span id="caja-tot-eg">$0</span>
+                </div>
+              </div>
+            </div>
+            <div style="margin-top:14px;padding:16px;background:#000;border-radius:10px;text-align:center">
+              <div style="color:#aaa;font-size:12px;font-weight:600;letter-spacing:1px">TOTAL EN CASH</div>
+              <div id="caja-tot-cash" style="color:#fff;font-size:28px;font-weight:800;margin-top:4px">$0</div>
             </div>
           </div>
         </div>
