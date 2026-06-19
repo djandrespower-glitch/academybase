@@ -31,7 +31,7 @@ async function fbUpd(col, id, data) { await updateDoc(doc(db, col, id), {...data
 async function fbSet(col, id, data) { await setDoc(doc(db, col, id), {...data, _ts: serverTimestamp()}, {merge:true}); }
 async function fbDel(col, id) { await deleteDoc(doc(db, col, id)); }
 
-var DB = { alumnos:[], pagos:[], cuotas:[], asistencias:[], cursos:[], horario_grupos:[], egresos:[], cat_egreso:[], cat_pag_for:[], cat_pag_est:[], cat_pag_form:[], cat_pag_cur:[], colaboradores:[], calendario_plan:[], calendario_plan_fs:[] };
+var DB = { alumnos:[], pagos:[], cuotas:[], asistencias:[], cursos:[], horario_grupos:[], egresos:[], cat_egreso:[], cat_pag_for:[], cat_pag_est:[], cat_pag_form:[], cat_pag_cur:[], colaboradores:[], calendario_plan:[], calendario_plan_fs:[], caja_movimientos:[] };
 
 function listenCol(col, key, cb) {
   const q = query(collection(db, col), orderBy("_ts", "desc"));
@@ -166,6 +166,7 @@ function initApp() {
   listenCol("colaboradores",  "colaboradores", function(){ if(document.getElementById('page-colaboradores').classList.contains('active')) renderColaboradores(); });
   listenCol("calendario_plan","calendario_plan",function(){ if(document.getElementById('page-calendario').classList.contains('active')) renderCalPlan(); });
   listenCol("calendario_plan_fs","calendario_plan_fs",function(){ if(document.getElementById('page-calendario').classList.contains('active')) renderCalPlanFS(); });
+  listenCol("caja_movimientos","caja_movimientos",function(){ if(document.getElementById('page-caja').classList.contains('active')) renderCaja(); });
   listenCol("cat_pag_cur",    "cat_pag_cur",    function(){ poblarSelectsPag(); if(document.getElementById('page-pagos').classList.contains('active')) renderPagos(); });
   listenCol("cat_pag_for",    "cat_pag_for",    function(){ poblarSelectsPag(); if(document.getElementById('page-pagos').classList.contains('active')) renderPagos(); });
   listenCol("cat_pag_est",    "cat_pag_est",    function(){ poblarSelectsPag(); if(document.getElementById('page-pagos').classList.contains('active')) renderPagos(); });
@@ -269,7 +270,7 @@ window.showPage=function(id,el){
   document.querySelectorAll('.ni').forEach(function(n){n.classList.remove('active')});
   document.getElementById('page-'+id).classList.add('active');
   if(el)el.classList.add('active');
-  var T={dashboard:'Dashboard',alertas:'Alertas',alumnos:'Alumnos',cursos:'Cursos',colaboradores:'Colaboradores',asistencia:'Asistencia',pagos:'Pagos',egresos:'Egresos',reporte:'Reportes',horarios_aulas:'Horarios por Cursos',calendario:'Calendario Académico',exportar:'Exportar Base'};
+  var T={dashboard:'Dashboard',alertas:'Alertas',alumnos:'Alumnos',cursos:'Cursos',colaboradores:'Colaboradores',asistencia:'Asistencia',pagos:'Pagos',egresos:'Egresos',caja:'Efectivo / Caja',reporte:'Reportes',horarios_aulas:'Horarios por Cursos',calendario:'Calendario Académico',exportar:'Exportar Base'};
   document.getElementById('page-title').textContent=T[id]||id;
   var ac=document.getElementById('topbar-acts');
   var logoutBtn=document.getElementById('_logout_btn');
@@ -287,7 +288,7 @@ window.showPage=function(id,el){
   }
   // Re-append user label
   if(userLbl){ac.appendChild(userLbl)}
-  var fns={dashboard:renderDash,alertas:renderAlertas,alumnos:renderAlumnos,cursos:renderCursos,colaboradores:renderColaboradores,pagos:renderPagos,egresos:renderEgresos,reporte:renderReporte,asistencia:renderAsistencia,horarios_aulas:window.initHorariosPage,calendario:function(){renderCalPlan();renderCalPlanFS();},exportar:function(){}};
+  var fns={dashboard:renderDash,alertas:renderAlertas,alumnos:renderAlumnos,cursos:renderCursos,colaboradores:renderColaboradores,pagos:renderPagos,egresos:renderEgresos,caja:renderCaja,reporte:renderReporte,asistencia:renderAsistencia,horarios_aulas:window.initHorariosPage,calendario:function(){renderCalPlan();renderCalPlanFS();},exportar:function(){}};
   if(fns[id])fns[id]();
 }
 
@@ -1226,6 +1227,52 @@ window.saveCalpCelda=async function(coleccion,cursoId,anio,mesIdx,campo,valor){
   meses[mesIdx][campo]=valor;
   await fbSet(coleccion,docId,{cursoId:cursoId,anio:parseInt(anio),meses:meses});
 }
+
+// ── EFECTIVO / CAJA ────────────────────────────────────────
+window.renderCaja=function(){
+  var mesFiltro=document.getElementById('caja-mes').value;
+  var ingresos=DB.caja_movimientos.filter(function(m){return m.tipo==='ingreso'&&(!mesFiltro||(m.fecha||'').slice(0,7)===mesFiltro)}).sort(function(a,b){return(a.fecha||'')<(b.fecha||'')?-1:1});
+  var egresos=DB.caja_movimientos.filter(function(m){return m.tipo==='egreso'&&(!mesFiltro||(m.fecha||'').slice(0,7)===mesFiltro)}).sort(function(a,b){return(a.fecha||'')<(b.fecha||'')?-1:1});
+
+  document.getElementById('caja-ing-body').innerHTML=ingresos.map(function(m){
+    return'<tr>'
+      +'<td style="padding:4px"><input type="date" value="'+(m.fecha||'')+'" onchange="updCajaFila(\''+m.id+'\',\'fecha\',this.value)" style="font-size:11px;border:1px solid #e0e0e0;border-radius:4px;padding:3px;width:100%"></td>'
+      +'<td style="padding:4px"><input value="'+(m.concepto||'').replace(/"/g,'&quot;')+'" onchange="updCajaFila(\''+m.id+'\',\'concepto\',this.value)" placeholder="Concepto" style="font-size:12px;border:1px solid #e0e0e0;border-radius:4px;padding:3px 6px;width:100%"></td>'
+      +'<td style="padding:4px"><input type="number" value="'+(m.valor||'')+'" onchange="updCajaFila(\''+m.id+'\',\'valor\',this.value)" placeholder="0" style="font-size:12px;border:1px solid #e0e0e0;border-radius:4px;padding:3px 6px;width:100%"></td>'
+      +'<td style="text-align:center"><button onclick="delCajaFila(\''+m.id+'\')" style="background:none;border:none;color:#c0392b;cursor:pointer;font-size:14px">×</button></td>'
+      +'</tr>';
+  }).join('')||'<tr><td colspan="4" style="text-align:center;color:#aaa;padding:14px;font-size:12px">Sin movimientos</td></tr>';
+
+  document.getElementById('caja-eg-body').innerHTML=egresos.map(function(m){
+    return'<tr>'
+      +'<td style="padding:4px"><input type="date" value="'+(m.fecha||'')+'" onchange="updCajaFila(\''+m.id+'\',\'fecha\',this.value)" style="font-size:11px;border:1px solid #e0e0e0;border-radius:4px;padding:3px;width:100%"></td>'
+      +'<td style="padding:4px"><input value="'+(m.concepto||'').replace(/"/g,'&quot;')+'" onchange="updCajaFila(\''+m.id+'\',\'concepto\',this.value)" placeholder="Concepto" style="font-size:12px;border:1px solid #e0e0e0;border-radius:4px;padding:3px 6px;width:100%"></td>'
+      +'<td style="padding:4px"><input type="number" value="'+(m.valor||'')+'" onchange="updCajaFila(\''+m.id+'\',\'valor\',this.value)" placeholder="0" style="font-size:12px;border:1px solid #e0e0e0;border-radius:4px;padding:3px 6px;width:100%"></td>'
+      +'<td style="text-align:center"><button onclick="delCajaFila(\''+m.id+'\')" style="background:none;border:none;color:#c0392b;cursor:pointer;font-size:14px">×</button></td>'
+      +'</tr>';
+  }).join('')||'<tr><td colspan="4" style="text-align:center;color:#aaa;padding:14px;font-size:12px">Sin movimientos</td></tr>';
+
+  var totIng=ingresos.reduce(function(s,m){return s+(parseFloat(m.valor)||0)},0);
+  var totEg=egresos.reduce(function(s,m){return s+(parseFloat(m.valor)||0)},0);
+  document.getElementById('caja-tot-ing').textContent='$'+totIng.toLocaleString('es-CO');
+  document.getElementById('caja-tot-eg').textContent='$'+totEg.toLocaleString('es-CO');
+  document.getElementById('caja-tot-cash').textContent='$'+(totIng-totEg).toLocaleString('es-CO');
+}
+
+window.addCajaFila=async function(tipo){
+  await fbAdd('caja_movimientos',{tipo:tipo,fecha:new Date().toISOString().split('T')[0],concepto:'',valor:0});
+}
+
+window.updCajaFila=async function(id,campo,valor){
+  var data={};
+  data[campo]=campo==='valor'?(parseFloat(valor)||0):valor;
+  await fbUpd('caja_movimientos',id,data);
+}
+
+window.delCajaFila=function(id){
+  confirmDel('Eliminar este movimiento?',async function(){await fbDel('caja_movimientos',id);});
+}
+
 
 // ── EXPORTAR ──────────────────────────────────────────────
 function toCSV(r,h){var e=function(v){return'"'+String(v||'').replace(/"/g,'""')+'"'};return[h.map(e).join(',')].concat(r.map(function(x){return h.map(function(k){return e(x[k])}).join(',')})).join('\n')}
