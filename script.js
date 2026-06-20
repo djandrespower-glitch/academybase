@@ -218,9 +218,9 @@ window.closeM=closeM;
 
 function gCN(mid,niv){var c=DB.cursos.find(function(x){return x.id===mid});if(!c)return'-';return niv?c.nombre+' - '+niv:c.nombre}
 function gA(id){return DB.alumnos.find(function(x){return x.id===id})}
-function gAN(id){var a=gA(id);return a?a.nombre:'-'}
-function gAC(id){var a=gA(id);return a?gCN(a.moduloId,a.nivel):'-'}
-function gAI(id){var a=gA(id);return a?(a.ingreso||'-'):'-'}
+function gAN(id){if(!id)return'-';if(id.indexOf('txt:')===0)return id.slice(4);var a=gA(id);return a?a.nombre:'-'}
+function gAC(id){if(!id||id.indexOf('txt:')===0)return'-';var a=gA(id);return a?gCN(a.moduloId,a.nivel):'-'}
+function gAI(id){if(!id||id.indexOf('txt:')===0)return'-';var a=gA(id);return a?(a.ingreso||'-'):'-'}
 function bdg(e){var m={Pagado:'bg',Pendiente:'by',Vencido:'br',Presente:'bg',Ausente:'br',Tardanza:'by'};return'<span class="bdg '+(m[e]||'bgr')+'">'+e+'</span>'}
 function dR(f){if(!f)return null;return Math.ceil((new Date(f)-new Date())/864e5)}
 function avEl(a,sz){sz=sz||30;if(a.foto)return'<img src="'+a.foto+'" style="width:'+sz+'px;height:'+sz+'px;border-radius:50%;object-fit:cover">';var i=(a.nombre||'?').split(' ').slice(0,2).map(function(w){return w[0]}).join('').toUpperCase();return'<div class="avp" style="width:'+sz+'px;height:'+sz+'px;font-size:'+Math.floor(sz*.38)+'px">'+i+'</div>'}
@@ -243,6 +243,27 @@ function confirmDel(msg,cb){
 
 function popCur(sid){var s=document.getElementById(sid);if(!s)return;var v=s.value;s.innerHTML='<option value="">Seleccionar...</option>';DB.cursos.forEach(function(c){s.innerHTML+='<option value="'+c.id+'">'+c.nombre+'</option>'});s.value=v}
 function popAl(sid){var s=document.getElementById(sid);if(!s)return;var v=s.value;s.innerHTML='<option value="">Seleccionar alumno...</option>';DB.alumnos.forEach(function(a){s.innerHTML+='<option value="'+a.id+'">'+a.nombre+'</option>'});s.value=v}
+
+function popDatalistAlumnos(listId){
+  var dl=document.getElementById(listId);if(!dl)return;
+  dl.innerHTML=DB.alumnos.map(function(a){return'<option value="'+a.nombre.replace(/"/g,'&quot;')+'">'}).join('');
+}
+function popDatalistCursos(listId){
+  var dl=document.getElementById(listId);if(!dl)return;
+  dl.innerHTML=DB.cursos.map(function(c){return'<option value="'+c.nombre.replace(/"/g,'&quot;')+'">'}).join('');
+}
+// Convierte el texto escrito en el input de nombre a un alumnoId real si coincide, o "txt:Nombre" si es libre
+function resolverAlumnoId(nombreTexto){
+  var nombre=(nombreTexto||'').trim();
+  if(!nombre)return'';
+  var match=DB.alumnos.find(function(a){return a.nombre.toLowerCase()===nombre.toLowerCase()});
+  return match?match.id:'txt:'+nombre;
+}
+function nombreDesdeAlumnoId(id){
+  if(!id)return'';
+  if(id.indexOf('txt:')===0)return id.slice(4);
+  var a=gA(id);return a?a.nombre:'';
+}
 
 window.updNiv=function(sel){
   var c=DB.cursos.find(function(x){return x.id===document.getElementById('f-mod').value});
@@ -646,11 +667,12 @@ window.delCatPag=function(tipo,id){
 
 window.openMPag=function(id){
   id=id||null;ePid=id;
-  popAl('mp-al');
+  popDatalistAlumnos('mp-al-list');
+  popDatalistCursos('mp-cur-list');
   poblarSelectsPag();
   document.getElementById('mp-tit').textContent=id?'Editar ingreso':'Nuevo ingreso';
   document.getElementById('mp-fec').value=new Date().toISOString().split('T')[0];
-  ['mp-mon','mp-net','mp-com','mp-not'].forEach(function(k){document.getElementById(k).value=''});
+  ['mp-mon','mp-net','mp-com','mp-not','mp-al'].forEach(function(k){document.getElementById(k).value=''});
   document.getElementById('mp-cur').value='';
   document.getElementById('mp-for').value='';
   document.getElementById('mp-est').value='';
@@ -659,7 +681,7 @@ window.openMPag=function(id){
   if(id){
     var p=DB.pagos.find(function(x){return x.id===id});
     if(p){
-      document.getElementById('mp-al').value=p.alumnoId||'';
+      document.getElementById('mp-al').value=nombreDesdeAlumnoId(p.alumnoId);
       document.getElementById('mp-cur').value=p.curso||'';
       document.getElementById('mp-mon').value=p.monto||'';
       document.getElementById('mp-net').value=p.neto||'';
@@ -676,13 +698,14 @@ window.openMPag=function(id){
 }
 
 window.savePago=async function(){
-  var aid=document.getElementById('mp-al').value;
+  var nombreTexto=document.getElementById('mp-al').value.trim();
   var mon=parseFloat(document.getElementById('mp-mon').value);
-  if(!aid){alert('Selecciona un alumno.');return}
+  if(!nombreTexto){alert('Ingresa o selecciona un alumno.');return}
   if(!mon){alert('Ingresa el valor.');return}
+  var aid=resolverAlumnoId(nombreTexto);
   var data={
     alumnoId:aid,
-    curso:document.getElementById('mp-cur').value,
+    curso:document.getElementById('mp-cur').value.trim(),
     monto:mon,
     neto:parseFloat(document.getElementById('mp-net').value)||0,
     fecha:document.getElementById('mp-fec').value,
@@ -691,7 +714,7 @@ window.savePago=async function(){
     comision:parseFloat(document.getElementById('mp-com').value)||0,
     formulario:document.getElementById('mp-form').value,
     notas:document.getElementById('mp-not').value.trim(),
-    periodo:document.getElementById('mp-cur').value
+    periodo:document.getElementById('mp-cur').value.trim()
   };
   if(ePid){await fbUpd('pagos',ePid,data)}
   else{data.creado=new Date().toISOString().split('T')[0];await fbAdd('pagos',data)}
