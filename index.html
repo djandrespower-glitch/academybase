@@ -769,11 +769,12 @@
               <thead>
                 <tr>
                   <th></th>
-                  <th>Nombre</th>
-                  <th>Teléfono</th>
-                  <th>Curso/Nivel</th>
-                  <th>Inicio</th>
-                  <th>Fin</th>
+                  <th onclick="sortAlumnos('nombre')" style="cursor:pointer;user-select:none">Nombre <span id="sah-nombre">↕</span></th>
+                  <th onclick="sortAlumnos('telefono')" style="cursor:pointer;user-select:none">Teléfono <span id="sah-telefono">↕</span></th>
+                  <th onclick="sortAlumnos('moduloId')" style="cursor:pointer;user-select:none">Curso/Nivel <span id="sah-moduloId">↕</span></th>
+                  <th onclick="sortAlumnos('ingreso')" style="cursor:pointer;user-select:none">Ingreso <span id="sah-ingreso">↕</span></th>
+                  <th onclick="sortAlumnos('inicio')" style="cursor:pointer;user-select:none">Inicio <span id="sah-inicio">↕</span></th>
+                  <th onclick="sortAlumnos('fin')" style="cursor:pointer;user-select:none">Fin <span id="sah-fin">↕</span></th>
                   <th>Acciones</th>
                 </tr>
               </thead>
@@ -810,11 +811,11 @@
               <thead>
                 <tr>
                   <th></th>
-                  <th>Nombre</th>
-                  <th>Cargo</th>
-                  <th>Teléfono</th>
-                  <th>Email</th>
-                  <th>Ingreso</th>
+                  <th onclick="sortCol('nombre')" style="cursor:pointer;user-select:none">Nombre <span id="sch-nombre">↕</span></th>
+                  <th onclick="sortCol('cargo')" style="cursor:pointer;user-select:none">Cargo <span id="sch-cargo">↕</span></th>
+                  <th onclick="sortCol('celular')" style="cursor:pointer;user-select:none">Teléfono <span id="sch-celular">↕</span></th>
+                  <th onclick="sortCol('email')" style="cursor:pointer;user-select:none">Email <span id="sch-email">↕</span></th>
+                  <th onclick="sortCol('ingreso')" style="cursor:pointer;user-select:none">Ingreso <span id="sch-ingreso">↕</span></th>
                   <th>Acciones</th>
                 </tr>
               </thead>
@@ -835,10 +836,11 @@
             <table>
               <thead>
                 <tr>
-                  <th>Alumno</th>
-                  <th>Curso</th>
-                  <th>Fecha</th>
-                  <th>Estado</th>
+                  <th onclick="sortAsist('alumnoId')" style="cursor:pointer;user-select:none">Alumno <span id="sasth-alumnoId">↕</span></th>
+                  <th onclick="sortAsist('curso')" style="cursor:pointer;user-select:none">Curso <span id="sasth-curso">↕</span></th>
+                  <th onclick="sortAsist('ingreso')" style="cursor:pointer;user-select:none">Ingreso <span id="sasth-ingreso">↕</span></th>
+                  <th onclick="sortAsist('fecha')" style="cursor:pointer;user-select:none">Fecha <span id="sasth-fecha">↓</span></th>
+                  <th onclick="sortAsist('estado')" style="cursor:pointer;user-select:none">Estado <span id="sasth-estado">↕</span></th>
                   <th>Notas</th>
                   <th></th>
                 </tr>
