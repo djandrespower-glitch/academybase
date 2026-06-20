@@ -1264,8 +1264,14 @@
       </div>
       <div class="mb">
         <div class="fg" style="grid-template-columns:1fr 1fr">
-          <div class="fgp" style="grid-column:1/-1"><label>Nombre (alumno)</label><select id="mp-al"><option value="">Seleccionar...</option></select></div>
-          <div class="fgp" style="grid-column:1/-1"><label>Curso</label><select id="mp-cur"><option value="">Seleccionar...</option></select></div>
+          <div class="fgp" style="grid-column:1/-1"><label>Nombre (alumno)</label>
+            <input id="mp-al" list="mp-al-list" placeholder="Escribe o selecciona un alumno...">
+            <datalist id="mp-al-list"></datalist>
+          </div>
+          <div class="fgp" style="grid-column:1/-1"><label>Curso</label>
+            <input id="mp-cur" list="mp-cur-list" placeholder="Escribe o selecciona un curso...">
+            <datalist id="mp-cur-list"></datalist>
+          </div>
           <div class="fgp"><label>Valor (COP)</label><input id="mp-mon" type="number" placeholder="0"></div>
           <div class="fgp"><label>Neto (COP)</label><input id="mp-net" type="number" placeholder="0"></div>
           <div class="fgp"><label>Fecha</label><input id="mp-fec" type="date"></div>
