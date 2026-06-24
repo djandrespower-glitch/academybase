@@ -753,8 +753,11 @@ window.renderPagos=function renderPagos(){
     return va<vb?-_pagSort.dir:va>vb?_pagSort.dir:0;
   });
   var tot=list.reduce(function(s,p){return s+(parseFloat(p.monto)||0)},0);
+  var totNeto=list.reduce(function(s,p){return s+(parseFloat(p.neto)||0)},0);
   var totEl=document.getElementById('pag-total');
-  if(totEl)totEl.textContent='Total: $'+tot.toLocaleString('es-CO');
+  if(totEl)totEl.textContent='Total Valor: $'+tot.toLocaleString('es-CO');
+  var totNetoEl=document.getElementById('pag-total-neto');
+  if(totNetoEl)totNetoEl.textContent='Total Neto: $'+totNeto.toLocaleString('es-CO');
   document.getElementById('t-pag').innerHTML=list.map(function(p){
     return'<tr style="cursor:pointer" onclick="selPago(\''+p.id+'\',\''+gAN(p.alumnoId).replace(/'/g,'')+'\')">'+
       '<td style="font-weight:500">'+gAN(p.alumnoId)+'</td>'+
@@ -962,12 +965,15 @@ window.renderReporte=function renderReporte(){
   var fAl=document.getElementById('r-al').value,fCur=document.getElementById('r-cur').value,fEst=document.getElementById('r-est').value,fMes=document.getElementById('r-mes').value;
   var list=DB.pagos.filter(function(p){if(fAl&&p.alumnoId!==fAl)return false;if(fCur){var a=gA(p.alumnoId);if(!a||a.moduloId!==fCur)return false}if(fEst&&p.estado!==fEst)return false;if(fMes&&p.fecha&&p.fecha.slice(0,7)!==fMes)return false;return true});
   var ingresos=list.reduce(function(s,p){return s+(parseFloat(p.monto)||0)},0);
+  var ingresosNeto=list.reduce(function(s,p){return s+(parseFloat(p.neto)||0)},0);
   var pen=DB.cuotas.reduce(function(s,c){return s+parseFloat(c.monto||0)},0);
   // Egresos del mismo mes filtrado
   var egList=DB.egresos.filter(function(e){if(fMes&&e.fecha&&e.fecha.slice(0,7)!==fMes)return false;return true});
   var egresos=egList.reduce(function(s,e){return s+(parseFloat(e.valor)||0)},0);
   var utilidad=ingresos-egresos;
   document.getElementById('r-tot').textContent='$'+ingresos.toLocaleString('es-CO');
+  var rTotNetoEl=document.getElementById('r-tot-neto');
+  if(rTotNetoEl)rTotNetoEl.textContent='$'+ingresosNeto.toLocaleString('es-CO');
   document.getElementById('r-pen').textContent='$'+pen.toLocaleString('es-CO');
   document.getElementById('r-cnt').textContent=list.length;
   // Utilidad neta
