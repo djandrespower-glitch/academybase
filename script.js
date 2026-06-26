@@ -936,7 +936,7 @@ window.saveAsist=async function(){
   await fbAdd('asistencias',{alumnoId:aid,fecha:document.getElementById('ma-fec').value,estado:document.getElementById('ma-est').value,notes:document.getElementById('ma-not').value.trim()});
   closeM('m-asist');renderAsistencia();
 }
-window.delAsist=async function(id){await fbDel('asistencias',id);renderAsistencia()}
+window.delAsist=function(id){confirmDel('Eliminar este registro de asistencia?',async function(){await fbDel('asistencias',id);renderAsistencia();})}
 window.sortAsist=function(col){
   if(_astSort.col===col){_astSort.dir*=-1;}else{_astSort.col=col;_astSort.dir=-1;}
   ['alumnoId','curso','ingreso','fecha','estado'].forEach(function(c){
