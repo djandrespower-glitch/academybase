@@ -1035,7 +1035,9 @@ window.renderHorariosPage=function(){
   var fIni=curso&&curso['fechas_mes_'+mesAct+'_inicio']||'';
   var fFin=curso&&curso['fechas_mes_'+mesAct+'_fin']||'';
   var mesOpts=MESES_N.map(function(m,i){return'<option value="'+i+'" '+(i==mesAct?'selected':'')+'>'+m.toUpperCase()+'</option>'}).join('');
-  var tabs=DB.cursos.map(function(c){var act=c.id===cursoAct;return'<button onclick="window.hCursoTab=\''+c.id+'\';window.renderHorariosPage()" style="padding:6px 16px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:600;border:none;background:'+(act?'#c0392b':'#1f2937')+';color:'+(act?'#111':'#9ca3af')+'">'+c.nombre+'</button>'}).join('');
+  var tabs='<select onchange="window.hCursoTab=this.value;window.renderHorariosPage()" style="background:#1f2937;color:#fff;border:1px solid #374151;border-radius:8px;padding:8px 14px;font-size:13px;font-weight:600;outline:none;min-width:240px">'
+    +DB.cursos.map(function(c){var act=c.id===cursoAct;return'<option value="'+c.id+'" '+(act?'selected':'')+'>'+c.nombre+'</option>'}).join('')
+    +'</select>';
   var gridHtml='';
   if(!niveles.length){
     gridHtml='<div style="color:#6b7280;text-align:center;padding:40px">Este curso no tiene niveles.</div>';
@@ -1070,7 +1072,7 @@ window.renderHorariosPage=function(){
     +'<span style="color:#9ca3af;font-size:12px">termina</span>'
     +'<input type="date" value="'+fFin+'" onchange="window.setCursoFecha(\'fin\',this.value)" style="background:#1f2937;color:#fff;border:1px solid #374151;border-radius:8px;padding:6px 10px;font-size:13px;outline:none;width:140px">'
     +'</div>'
-    +'<div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:14px">'+tabs+'</div>'
+    +'<div style="margin-bottom:14px">'+tabs+'</div>'
     +gridHtml+'</div>';
 }
 window.setCursoFecha=async function(campo,val){
