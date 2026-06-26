@@ -36,7 +36,7 @@ async function fbUpd(col, id, data) { await updateDoc(doc(db, col, id), {...data
 async function fbSet(col, id, data) { await setDoc(doc(db, col, id), {...data, _ts: serverTimestamp()}, {merge:true}); }
 async function fbDel(col, id) { await deleteDoc(doc(db, col, id)); }
 
-var DB = { alumnos:[], cursos:[], materias:[], notas:[], roles:[], pagos:[], cuotas:[] };
+var DB = { alumnos:[], cursos:[], materias:[], notas:[], roles:[], pagos:[], cuotas:[], calendario_plan:[], calendario_plan_fs:[], eventos:[] };
 var rolActual = null, rolData = null, currentUserEmail = null, rolesEscuchado = false;
 
 function listenCol(col, key, cb, ordered) {
@@ -129,6 +129,9 @@ function initApp() {
   if (rolActual === 'admin' || rolActual === 'profesor') {
     listenCol("pagos",  "pagos",  function(){ rerenderActiva(); }, false);
     listenCol("cuotas", "cuotas", function(){ rerenderActiva(); }, false);
+    listenCol("calendario_plan",    "calendario_plan",    function(){ rerenderActiva(); }, false);
+    listenCol("calendario_plan_fs", "calendario_plan_fs", function(){ rerenderActiva(); }, false);
+    listenCol("eventos", "eventos", function(){ rerenderActiva(); }, false);
   }
 }
 
@@ -136,7 +139,7 @@ function rerenderActiva() {
   var p = document.querySelector('.page.active');
   if (!p) return;
   var id = p.id.replace('page-','');
-  var fns = {dashboard:renderDash, calificar:function(){renderCalificar();renderBoletin();}, misnotas:renderMisNotas, materias:renderMaterias, accesos:renderAccesos};
+  var fns = {dashboard:renderDash, calificar:function(){renderCalificar();renderBoletin();}, misnotas:renderMisNotas, materias:renderMaterias, accesos:renderAccesos, calendario:function(){renderCalNotas();renderCalNotasFS();renderEventos();}};
   if (fns[id]) fns[id]();
 }
 
@@ -217,6 +220,8 @@ function poblarSelects(){
   fillSelect('bol-alumno', [{v:'',t:'Selecciona un alumno...'}].concat(DB.alumnos.slice().sort(function(a,b){return(a.nombre||'').localeCompare(b.nombre||'')}).map(function(a){return{v:a.id,t:a.nombre}})));
 
   fillSelect('aa-al', [{v:'',t:'Seleccionar alumno...'}].concat(DB.alumnos.slice().sort(function(a,b){return(a.nombre||'').localeCompare(b.nombre||'')}).map(function(a){return{v:a.id,t:a.nombre}})));
+
+  fillSelect('ev-materia', [{v:'',t:'Ninguna / General'}].concat(DB.materias.map(function(m){return{v:m.id,t:m.nombre+' · '+gCN(m.cursoId)}})));
 }
 function fillSelect(id, opts){
   var s=document.getElementById(id); if(!s) return;
@@ -231,7 +236,7 @@ window.showPage=function(id,el){
   document.querySelectorAll('.ni').forEach(function(n){n.classList.remove('active')});
   document.getElementById('page-'+id).classList.add('active');
   if(el)el.classList.add('active');
-  var T={dashboard:'Dashboard',calificar:'Calificar',misnotas:'Mis Notas',materias:'Materias',accesos:'Accesos'};
+  var T={dashboard:'Dashboard',calificar:'Calificar',misnotas:'Mis Notas',materias:'Materias',accesos:'Accesos',calendario:'Calendario'};
   document.getElementById('page-title').textContent=T[id]||id;
 
   var ac=document.getElementById('topbar-acts');
@@ -241,7 +246,7 @@ window.showPage=function(id,el){
   if(pill) ac.appendChild(pill);
   if(logoutBtn) ac.appendChild(logoutBtn);
 
-  var fns={dashboard:renderDash, calificar:function(){renderCalificar();renderBoletin();}, misnotas:renderMisNotas, materias:renderMaterias, accesos:function(){listenRolesIfNeeded();renderAccesos();}};
+  var fns={dashboard:renderDash, calificar:function(){renderCalificar();renderBoletin();}, misnotas:renderMisNotas, materias:renderMaterias, accesos:function(){listenRolesIfNeeded();renderAccesos();}, calendario:function(){renderCalNotas();renderCalNotasFS();renderEventos();}};
   if(fns[id]) fns[id]();
 }
 function listenRolesIfNeeded(){
@@ -259,6 +264,13 @@ window.swAccTab=function(tab,el){
   el.classList.add('active');
   document.getElementById('acc-tab-prof').style.display = tab==='prof'?'':'none';
   document.getElementById('acc-tab-alu').style.display = tab==='alu'?'':'none';
+}
+
+window.swCalendarioTab=function(tab,el){
+  document.querySelectorAll('#page-calendario .tab').forEach(function(t){t.classList.remove('active')});
+  el.classList.add('active');
+  document.getElementById('calt-plan').style.display = tab==='plan'?'':'none';
+  document.getElementById('calt-eventos').style.display = tab==='eventos'?'':'none';
 }
 
 // ── DASHBOARD ─────────────────────────────────────────────
@@ -575,4 +587,107 @@ window.crearAccesoAlumno=async function(){
     } else { err.textContent='Error: '+e.message; }
   }
   btn.disabled=false; btn.textContent='Crear acceso';
+}
+
+// ── CALENDARIO: PLANEACIÓN DE CURSOS (igual a la base de alumnos) ──
+var MESES_CALP=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+var CAMPOS_CALP=['n1i','n1f','n2i','n2f','n3i','n3f','n4i','n4f'];
+
+function poblarCalpCurso(selectId){
+  var sel=document.getElementById(selectId); if(!sel) return;
+  var pv=sel.value;
+  sel.innerHTML=[{v:'',t:'Seleccionar...'}].concat(DB.cursos.map(function(c){return{v:c.id,t:c.nombre}})).map(function(o){return'<option value="'+o.v+'">'+o.t+'</option>'}).join('');
+  if(pv && DB.cursos.some(function(c){return c.id===pv})) sel.value=pv;
+}
+
+function renderCalpTabla(opts){
+  poblarCalpCurso(opts.selCurso);
+  var cursoId=document.getElementById(opts.selCurso).value;
+  var anioInp=document.getElementById(opts.selAnio);
+  if(!anioInp.value) anioInp.value=new Date().getFullYear();
+  var anio=anioInp.value;
+  var tb=document.getElementById(opts.tbodyId); if(!tb) return;
+  if(!cursoId){ tb.innerHTML='<tr><td colspan="9" style="text-align:center;color:#aaa;padding:20px">Selecciona un curso</td></tr>'; return; }
+  var docId=cursoId+'_'+anio;
+  var datos=DB[opts.coleccion].find(function(d){return d.id===docId});
+  tb.innerHTML=MESES_CALP.map(function(mes,mi){
+    var fila=(datos&&datos.meses&&datos.meses[mi])||{};
+    return'<tr style="border-bottom:1px solid #222">'
+      +'<td style="background:'+(opts.colorMes||'#1d4ed8')+';color:#fff;font-weight:600;padding:8px;text-align:center">'+mes+'</td>'
+      +CAMPOS_CALP.map(function(campo){
+        var val=fila[campo]||'';
+        return'<td style="padding:4px;text-align:center;background:#0a0a0a"><input type="date" value="'+val+'" disabled style="border:1px solid #2a2a2a;background:#161616;color:#999;border-radius:6px;padding:4px 6px;font-size:12px;width:100%;color-scheme:dark;cursor:not-allowed"></td>';
+      }).join('')
+      +'</tr>';
+  }).join('');
+}
+
+window.renderCalNotas=function(){
+  renderCalpTabla({selCurso:'cn-curso',selAnio:'cn-anio',tbodyId:'cn-body',coleccion:'calendario_plan',colorMes:'#dc2626'});
+}
+window.renderCalNotasFS=function(){
+  renderCalpTabla({selCurso:'cn-curso-fs',selAnio:'cn-anio-fs',tbodyId:'cn-body-fs',coleccion:'calendario_plan_fs',colorMes:'#1d4ed8'});
+}
+window.saveCalpCelda=async function(coleccion,cursoId,anio,mesIdx,campo,valor){
+  // Deshabilitado a propósito: el calendario de planeación es solo lectura desde Notas.
+  // Las fechas solo se editan desde la base de alumnos.
+}
+
+// ── CALENDARIO: EVENTOS ──────────────────────────────────────
+function tipoEvCfg(t){
+  return {examen:{cls:'br',txt:'Examen'}, entrega:{cls:'by',txt:'Entrega de notas'}, evento:{cls:'bb',txt:'Evento'}, otro:{cls:'bgr',txt:'Otro'}}[t] || {cls:'bgr',txt:t||'-'};
+}
+window.renderEventos=function(){
+  var list=document.getElementById('ev-list'); if(!list) return;
+  var tf=document.getElementById('ev-tipo-f').value;
+  var soloProx=document.getElementById('ev-solo-prox').checked;
+  var hoy=new Date().toISOString().slice(0,10);
+  var evs=DB.eventos.filter(function(e){return (!tf || e.tipo===tf) && (!soloProx || (e.fecha||'') >= hoy)})
+    .sort(function(a,b){return (a.fecha||'') < (b.fecha||'') ? -1 : 1});
+  if(!evs.length){ list.innerHTML='<div class="empty-state" style="color:#888">No hay eventos para mostrar.</div>'; return; }
+  list.innerHTML=evs.map(function(e){
+    var cfg=tipoEvCfg(e.tipo);
+    var mat=e.materiaId?gM(e.materiaId):null;
+    var fecha=e.fecha?new Date(e.fecha+'T00:00:00').toLocaleDateString('es-CO',{day:'2-digit',month:'short',year:'numeric'}):'-';
+    return '<div style="display:flex;align-items:center;gap:14px;padding:12px 4px;border-bottom:1px solid #222;flex-wrap:wrap">'
+      +'<div style="min-width:90px;font-size:12px;color:#aaa;font-weight:600">'+fecha+'</div>'
+      +'<div style="flex:1;min-width:160px"><div style="font-weight:600;font-size:14px">'+e.titulo+'</div>'
+      +(mat?'<div style="font-size:11px;color:#888">'+mat.nombre+'</div>':'')
+      +(e.descripcion?'<div style="font-size:12px;color:#999;margin-top:2px">'+e.descripcion+'</div>':'')+'</div>'
+      +'<span class="bdg '+cfg.cls+'">'+cfg.txt+'</span>'
+      +'<button class="btn bo bsm" onclick="openMEvento(\''+e.id+'\')">Editar</button>'
+      +'</div>';
+  }).join('');
+}
+window.openMEvento=function(id){
+  id=id||null;
+  document.getElementById('ev-tit').textContent = id?'Editar evento':'Nuevo evento';
+  document.getElementById('ev-titulo').value=''; document.getElementById('ev-fecha').value=''; document.getElementById('ev-tipo').value='examen';
+  document.getElementById('ev-materia').value=''; document.getElementById('ev-desc').value='';
+  document.getElementById('ev-del').style.display = id?'':'none';
+  document.getElementById('m-evento').dataset.editId = id||'';
+  if(id){
+    var e=DB.eventos.find(function(x){return x.id===id});
+    if(e){ document.getElementById('ev-titulo').value=e.titulo||''; document.getElementById('ev-fecha').value=e.fecha||''; document.getElementById('ev-tipo').value=e.tipo||'examen'; document.getElementById('ev-materia').value=e.materiaId||''; document.getElementById('ev-desc').value=e.descripcion||''; }
+  }
+  openM('m-evento');
+}
+window.saveEvento=async function(){
+  var titulo=document.getElementById('ev-titulo').value.trim(), fecha=document.getElementById('ev-fecha').value;
+  if(!titulo||!fecha){ alert('El título y la fecha son obligatorios.'); return; }
+  var data={
+    titulo:titulo, fecha:fecha, tipo:document.getElementById('ev-tipo').value,
+    materiaId: document.getElementById('ev-materia').value || null,
+    descripcion: document.getElementById('ev-desc').value.trim()
+  };
+  var editId=document.getElementById('m-evento').dataset.editId;
+  if(editId){ await fbUpd('eventos', editId, data); } else { await fbAdd('eventos', data); }
+  closeM('m-evento');
+}
+window.delEventoM=function(){
+  var editId=document.getElementById('m-evento').dataset.editId;
+  if(!editId) return;
+  confirmDel('¿Eliminar este evento del calendario?', async function(){
+    await fbDel('eventos', editId); closeM('m-evento');
+  });
 }
