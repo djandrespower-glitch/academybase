@@ -1049,14 +1049,14 @@ window.renderHorariosPage=function(){
         var grupos=DB.horario_grupos.filter(function(g){return g.franja===fr&&g.cursoId===cursoAct&&g.nivel===n&&String(g.mes)===String(mesAct)});
         var cards=grupos.map(function(g){
           var noms=(g.alumnos||[]).map(function(aid){return gAN(aid)}).filter(function(x){return x&&x!=='-'}).join('<br>');
-          return'<div onclick="window.editGrupo(\''+g.id+'\')" style="border-radius:10px;padding:8px 10px;margin-bottom:6px;position:relative;background:rgba(255,255,255,.09);border:1px solid rgba(255,255,255,.15);cursor:pointer">'
+          return'<div draggable="true" ondragstart="window.dragGrupoStart(event,\''+g.id+'\')" onclick="window.editGrupo(\''+g.id+'\')" style="border-radius:10px;padding:8px 10px;margin-bottom:6px;position:relative;background:rgba(255,255,255,.09);border:1px solid rgba(255,255,255,.15);cursor:grab">'
             +'<button onclick="event.stopPropagation();window.delGrupo(\''+g.id+'\')" style="position:absolute;top:4px;right:4px;background:#c0392b;border:none;border-radius:50%;width:18px;height:18px;font-size:10px;cursor:pointer;color:#fff;line-height:18px;text-align:center;padding:0">x</button>'
             +(g.instructor?'<div style="font-size:11px;font-weight:700;color:#c0392b;background:rgba(0,0,0,.3);border-radius:5px;padding:2px 7px;display:inline-block;margin-bottom:5px">'+g.instructor+'</div>':'')
             +'<div style="color:#e5e7eb;font-size:12px;line-height:1.7">'+(noms||'<span style="color:#6b7280;font-size:11px">Sin alumnos</span>')+'</div>'
             +(g.fechaIni&&g.fechaFin?'<div style="font-size:10px;font-weight:700;color:#f87171;margin-top:5px">'+fmtF(g.fechaIni)+' - '+fmtF(g.fechaFin)+'</div>':'')
             +'</div>';
         }).join('');
-        return'<td style="background:'+bg+';border-radius:10px;padding:7px;vertical-align:top;min-height:90px">'+cards+'<div onclick="window.openGrupoModal(\''+cursoAct+'\',\''+n+'\',\''+fr+'\')" style="border:1.5px dashed rgba(255,255,255,.25);border-radius:8px;padding:7px;text-align:center;cursor:pointer;font-size:12px;color:rgba(255,255,255,.35);margin-top:3px">+ grupo</div></td>';
+        return'<td ondragover="event.preventDefault()" ondrop="window.dragGrupoDrop(event,\''+cursoAct+'\',\''+n+'\',\''+fr+'\',\''+mesAct+'\')" style="background:'+bg+';border-radius:10px;padding:7px;vertical-align:top;min-height:90px">'+cards+'<div onclick="window.openGrupoModal(\''+cursoAct+'\',\''+n+'\',\''+fr+'\')" style="border:1.5px dashed rgba(255,255,255,.25);border-radius:8px;padding:7px;text-align:center;cursor:pointer;font-size:12px;color:rgba(255,255,255,.35);margin-top:3px">+ grupo</div></td>';
       }).join('');
       return'<tr><td style="color:#9ca3af;font-size:12px;font-weight:600;vertical-align:top;padding:12px 10px 0 2px;white-space:nowrap;width:75px">'+fr+'</td>'+tds+'</tr>';
     }).join('');
@@ -1095,7 +1095,37 @@ window.saveGrupo=async function(cursoId,nivel,franja){
   await fbAdd('horario_grupos',{cursoId:cursoId,nivel:nivel,franja:franja,mes:window.hMes,instructor:inst,alumnos:als,fechaIni:fi2,fechaFin:ff});
   var t=document.getElementById('_hm');if(t)t.remove();window.renderHorariosPage();
 }
-window.delGrupo=async function(id){await fbDel('horario_grupos',id);window.renderHorariosPage()}
+var _dragGrupoId=null;
+window.dragGrupoStart=function(ev,grupoId){
+  _dragGrupoId=grupoId;
+  ev.dataTransfer.effectAllowed='copy';
+}
+
+window.dragGrupoDrop=async function(ev,cursoId,nivelDestino,franjaDestino,mesDestino){
+  ev.preventDefault();
+  if(!_dragGrupoId)return;
+  var origen=DB.horario_grupos.find(function(g){return g.id===_dragGrupoId});
+  if(!origen){_dragGrupoId=null;return;}
+  // Si el destino es exactamente el mismo casillero de origen, no hacer nada
+  if(origen.cursoId===cursoId&&origen.nivel===nivelDestino&&origen.franja===franjaDestino&&String(origen.mes)===String(mesDestino)){
+    _dragGrupoId=null;return;
+  }
+  var existente=DB.horario_grupos.find(function(g){return g.cursoId===cursoId&&g.nivel===nivelDestino&&g.franja===franjaDestino&&String(g.mes)===String(mesDestino)});
+  var copiar=async function(){
+    var data={cursoId:cursoId,nivel:nivelDestino,franja:franjaDestino,mes:parseInt(mesDestino),instructor:origen.instructor||'',alumnos:(origen.alumnos||[]).slice(),fechaIni:origen.fechaIni||'',fechaFin:origen.fechaFin||''};
+    if(existente){await fbUpd('horario_grupos',existente.id,data)}
+    else{await fbAdd('horario_grupos',data)}
+    _dragGrupoId=null;
+    window.renderHorariosPage();
+  };
+  if(existente){
+    confirmDel('Este casillero ya tiene un grupo. Reemplazarlo con los alumnos copiados?',copiar);
+  } else {
+    copiar();
+  }
+}
+
+window.delGrupo=function(id){confirmDel('Eliminar este grupo y todos sus alumnos asignados?',async function(){await fbDel('horario_grupos',id);window.renderHorariosPage();})}
 window.editGrupo=function(id){
   var g=DB.horario_grupos.find(function(x){return x.id===id});if(!g)return;
   var tmp=document.getElementById('_hm');if(tmp)tmp.remove();
