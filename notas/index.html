@@ -34,6 +34,10 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
         Materias
       </div>
+      <div class="ni" data-page="calendario" data-roles="admin,profesor" onclick="showPage('calendario',this)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+        Calendario
+      </div>
 
       <div class="ns" id="ns-admin" data-roles="admin">Administración</div>
       <div class="ni" data-page="accesos" data-roles="admin" onclick="showPage('accesos',this)">
@@ -131,6 +135,96 @@
         </div>
       </div>
 
+      <!-- CALENDARIO (admin / profesor) -->
+      <div id="page-calendario" class="page" style="background:#000000;min-height:100%;margin:-18px;padding:18px;color:#fff">
+        <div class="tab-bar" style="background:#1a1a1a">
+          <div class="tab active" style="color:#ccc" onclick="swCalendarioTab('plan',this)">Planeación de cursos</div>
+          <div class="tab" style="color:#ccc" onclick="swCalendarioTab('eventos',this)">Eventos</div>
+        </div>
+
+        <div id="calt-plan">
+          <div style="font-size:12px;color:#888;margin-bottom:10px">🔒 Solo lectura — estas fechas se sincronizan en vivo desde la base de alumnos. Para modificarlas, hazlo allí.</div>
+          <div class="tw" style="padding:16px;background:#111;border:1px solid #222;margin-bottom:16px">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px">
+              <div style="display:flex;align-items:center;gap:14px">
+                <h3 style="font-size:14px;font-weight:700;color:#dc2626;margin:0">● ENTRE SEMANA</h3>
+                <label style="font-size:12px;color:#aaa;font-weight:600">CURSO</label>
+                <select id="cn-curso" class="fs" onchange="renderCalNotas()" style="min-width:220px;background:#1a1a1a;color:#fff;border:1px solid #333"></select>
+              </div>
+              <div style="display:flex;align-items:center;gap:10px">
+                <label style="font-size:12px;color:#aaa;font-weight:600">AÑO</label>
+                <input type="number" id="cn-anio" class="fs" style="width:90px;background:#1a1a1a;color:#fff;border:1px solid #333" onchange="renderCalNotas()">
+              </div>
+            </div>
+            <div style="overflow-x:auto">
+              <table style="min-width:1000px;border-collapse:collapse">
+                <thead><tr>
+                  <th style="background:#dc2626;color:#fff;padding:10px;font-size:13px">MESES</th>
+                  <th style="background:#14532d;color:#86efac;padding:8px;font-size:12px">INICIO<br>Nivel I</th>
+                  <th style="background:#14532d;color:#86efac;padding:8px;font-size:12px">FINAL<br>Nivel I</th>
+                  <th style="background:#713f12;color:#fde047;padding:8px;font-size:12px">INICIO<br>Nivel II</th>
+                  <th style="background:#713f12;color:#fde047;padding:8px;font-size:12px">FINAL<br>Nivel II</th>
+                  <th style="background:#164e63;color:#67e8f9;padding:8px;font-size:12px">INICIO<br>Nivel III</th>
+                  <th style="background:#164e63;color:#67e8f9;padding:8px;font-size:12px">FINAL<br>Nivel III</th>
+                  <th style="background:#831843;color:#f9a8d4;padding:8px;font-size:12px">INICIO<br>Nivel IV</th>
+                  <th style="background:#831843;color:#f9a8d4;padding:8px;font-size:12px">FINAL<br>Nivel IV</th>
+                </tr></thead>
+                <tbody id="cn-body"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="tw" style="padding:16px;background:#111;border:1px solid #222">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px">
+              <div style="display:flex;align-items:center;gap:14px">
+                <h3 style="font-size:14px;font-weight:700;color:#1d4ed8;margin:0">● FINES DE SEMANA</h3>
+                <label style="font-size:12px;color:#aaa;font-weight:600">CURSO</label>
+                <select id="cn-curso-fs" class="fs" onchange="renderCalNotasFS()" style="min-width:220px;background:#1a1a1a;color:#fff;border:1px solid #333"></select>
+              </div>
+              <div style="display:flex;align-items:center;gap:10px">
+                <label style="font-size:12px;color:#aaa;font-weight:600">AÑO</label>
+                <input type="number" id="cn-anio-fs" class="fs" style="width:90px;background:#1a1a1a;color:#fff;border:1px solid #333" onchange="renderCalNotasFS()">
+              </div>
+            </div>
+            <div style="overflow-x:auto">
+              <table style="min-width:1000px;border-collapse:collapse">
+                <thead><tr>
+                  <th style="background:#1d4ed8;color:#fff;padding:10px;font-size:13px">MESES</th>
+                  <th style="background:#14532d;color:#86efac;padding:8px;font-size:12px">INICIO<br>Nivel I</th>
+                  <th style="background:#14532d;color:#86efac;padding:8px;font-size:12px">FINAL<br>Nivel I</th>
+                  <th style="background:#713f12;color:#fde047;padding:8px;font-size:12px">INICIO<br>Nivel II</th>
+                  <th style="background:#713f12;color:#fde047;padding:8px;font-size:12px">FINAL<br>Nivel II</th>
+                  <th style="background:#164e63;color:#67e8f9;padding:8px;font-size:12px">INICIO<br>Nivel III</th>
+                  <th style="background:#164e63;color:#67e8f9;padding:8px;font-size:12px">FINAL<br>Nivel III</th>
+                  <th style="background:#831843;color:#f9a8d4;padding:8px;font-size:12px">INICIO<br>Nivel IV</th>
+                  <th style="background:#831843;color:#f9a8d4;padding:8px;font-size:12px">FINAL<br>Nivel IV</th>
+                </tr></thead>
+                <tbody id="cn-body-fs"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div id="calt-eventos" style="display:none">
+          <div class="tw" style="padding:16px;background:#111;border:1px solid #222">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap">
+              <button class="btn bp bsm" onclick="openMEvento()">+ Nuevo evento</button>
+              <select id="ev-tipo-f" class="fs" onchange="renderEventos()" style="background:#1a1a1a;color:#fff;border:1px solid #333;width:170px">
+                <option value="">Todos los tipos</option>
+                <option value="examen">Examen</option>
+                <option value="entrega">Entrega de notas</option>
+                <option value="evento">Evento</option>
+                <option value="otro">Otro</option>
+              </select>
+              <label style="font-size:12px;color:#aaa;display:flex;align-items:center;gap:6px;margin-left:auto">
+                <input type="checkbox" id="ev-solo-prox" checked onchange="renderEventos()"> Solo próximos
+              </label>
+            </div>
+            <div id="ev-list"></div>
+          </div>
+        </div>
+      </div>
+
       <!-- ACCESOS (admin) -->
       <div id="page-accesos" class="page">
         <div class="tab-bar">
@@ -151,6 +245,36 @@
         </div>
       </div>
 
+    </div>
+  </div>
+</div>
+
+<!-- Modal Evento de Calendario -->
+<div class="ov" id="m-evento">
+  <div class="modal" style="max-width:460px">
+    <div class="mh"><h3 id="ev-tit">Nuevo evento</h3><button class="btn bo bsm" onclick="closeM('m-evento')">X</button></div>
+    <div class="mb">
+      <div class="fg" style="grid-template-columns:1fr">
+        <div class="fgp"><label>Título *</label><input id="ev-titulo" placeholder="Ej: Examen final DJ Productor"></div>
+        <div class="fg">
+          <div class="fgp"><label>Fecha *</label><input id="ev-fecha" type="date"></div>
+          <div class="fgp"><label>Tipo *</label>
+            <select id="ev-tipo">
+              <option value="examen">Examen</option>
+              <option value="entrega">Entrega de notas</option>
+              <option value="evento">Evento</option>
+              <option value="otro">Otro</option>
+            </select>
+          </div>
+        </div>
+        <div class="fgp"><label>Materia (opcional)</label><select id="ev-materia"><option value="">Ninguna / General</option></select></div>
+        <div class="fgp"><label>Descripción</label><textarea id="ev-desc" placeholder="Detalles adicionales..."></textarea></div>
+      </div>
+    </div>
+    <div class="mf">
+      <button class="btn bd" id="ev-del" style="margin-right:auto;display:none" onclick="delEventoM()">Eliminar</button>
+      <button class="btn bo" onclick="closeM('m-evento')">Cancelar</button>
+      <button class="btn bp" onclick="saveEvento()">Guardar</button>
     </div>
   </div>
 </div>
