@@ -863,6 +863,7 @@
             <div style="padding:10px 14px;border-bottom:1px solid #f0f0f0;display:flex;justify-content:flex-end;gap:18px">
               <span id="pag-total" style="font-size:13px;font-weight:700;color:#15803d"></span>
               <span id="pag-total-neto" style="font-size:13px;font-weight:700;color:#0369a1"></span>
+              <span id="pag-total-com" style="font-size:13px;font-weight:700;color:#a16207"></span>
             </div>
             <div style="overflow-x:auto">
               <table style="min-width:1100px">
@@ -963,7 +964,7 @@
             <input type="month" class="fs" id="r-mes" onchange="renderReporte()" style="width:150px">
             <button class="btn bo bsm" onclick="printRep()">&#128424; Imprimir</button>
           </div>
-          <div class="sg" style="grid-template-columns:repeat(6,1fr)">
+          <div class="sg" style="grid-template-columns:repeat(7,1fr)">
             <div class="sc">
               <div class="lbl">Ingresos (Valor)</div>
               <div class="val" id="r-tot" style="color:#15803d">$0</div>
@@ -971,6 +972,10 @@
             <div class="sc">
               <div class="lbl">Ingresos (Neto)</div>
               <div class="val" id="r-tot-neto" style="color:#0369a1">$0</div>
+            </div>
+            <div class="sc">
+              <div class="lbl">Comisión</div>
+              <div class="val" id="r-tot-com" style="color:#a16207">$0</div>
             </div>
             <div class="sc">
               <div class="lbl">Egresos</div>
