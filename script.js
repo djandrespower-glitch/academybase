@@ -94,9 +94,12 @@ function aplicarRol(rol) {
   var sPen = document.getElementById('s-pen');
   if (sMes) sMes.closest('.sc').style.display = rol === 'admin' ? '' : 'none';
   if (sPen) sPen.closest('.sc').style.display = rol === 'admin' ? '' : 'none';
-  // Ocultar total de ingresos para asistente
+  // Ocultar total de ingresos (Valor y Neto) para asistente
   var pagTot=document.getElementById('pag-total');
   if(pagTot) pagTot.style.display=rol==='admin'?'':'none';
+  var pagTotNeto=document.getElementById('pag-total-neto');
+  if(pagTotNeto) pagTotNeto.style.display=rol==='admin'?'':'none';
+  // Total Comisión visible para ambos perfiles (no se oculta)
   // Cambiar gráfico dashboard según rol
   var chartTitle = document.getElementById('chart-title');
   if (chartTitle) chartTitle.textContent = rol === 'admin' ? 'Ingresos 6 meses' : 'Egresos 6 meses';
@@ -754,10 +757,13 @@ window.renderPagos=function renderPagos(){
   });
   var tot=list.reduce(function(s,p){return s+(parseFloat(p.monto)||0)},0);
   var totNeto=list.reduce(function(s,p){return s+(parseFloat(p.neto)||0)},0);
+  var totCom=list.reduce(function(s,p){return s+(parseFloat(p.comision)||0)},0);
   var totEl=document.getElementById('pag-total');
   if(totEl)totEl.textContent='Total Valor: $'+tot.toLocaleString('es-CO');
   var totNetoEl=document.getElementById('pag-total-neto');
   if(totNetoEl)totNetoEl.textContent='Total Neto: $'+totNeto.toLocaleString('es-CO');
+  var totComEl=document.getElementById('pag-total-com');
+  if(totComEl)totComEl.textContent='Total Comisión: $'+totCom.toLocaleString('es-CO');
   document.getElementById('t-pag').innerHTML=list.map(function(p){
     return'<tr style="cursor:pointer" onclick="selPago(\''+p.id+'\',\''+gAN(p.alumnoId).replace(/'/g,'')+'\')">'+
       '<td style="font-weight:500">'+gAN(p.alumnoId)+'</td>'+
@@ -966,6 +972,7 @@ window.renderReporte=function renderReporte(){
   var list=DB.pagos.filter(function(p){if(fAl&&p.alumnoId!==fAl)return false;if(fCur){var a=gA(p.alumnoId);if(!a||a.moduloId!==fCur)return false}if(fEst&&p.estado!==fEst)return false;if(fMes&&p.fecha&&p.fecha.slice(0,7)!==fMes)return false;return true});
   var ingresos=list.reduce(function(s,p){return s+(parseFloat(p.monto)||0)},0);
   var ingresosNeto=list.reduce(function(s,p){return s+(parseFloat(p.neto)||0)},0);
+  var ingresosCom=list.reduce(function(s,p){return s+(parseFloat(p.comision)||0)},0);
   var pen=DB.cuotas.reduce(function(s,c){return s+parseFloat(c.monto||0)},0);
   // Egresos del mismo mes filtrado
   var egList=DB.egresos.filter(function(e){if(fMes&&e.fecha&&e.fecha.slice(0,7)!==fMes)return false;return true});
@@ -974,6 +981,8 @@ window.renderReporte=function renderReporte(){
   document.getElementById('r-tot').textContent='$'+ingresos.toLocaleString('es-CO');
   var rTotNetoEl=document.getElementById('r-tot-neto');
   if(rTotNetoEl)rTotNetoEl.textContent='$'+ingresosNeto.toLocaleString('es-CO');
+  var rTotComEl=document.getElementById('r-tot-com');
+  if(rTotComEl)rTotComEl.textContent='$'+ingresosCom.toLocaleString('es-CO');
   document.getElementById('r-pen').textContent='$'+pen.toLocaleString('es-CO');
   document.getElementById('r-cnt').textContent=list.length;
   // Utilidad neta
