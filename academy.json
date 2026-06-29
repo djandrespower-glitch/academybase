@@ -1,0 +1,127 @@
+{
+  "academy": {
+    "name": "Deejay Academy",
+    "website": "https://www.djacademy.com.co",
+    "cities": [
+      "Bogotá",
+      "Chía"
+    ],
+    "certifications": [
+      "Ableton Live Certified Training Center",
+      "FL Studio Recognized Center",
+      "Native Instruments Educational Partner"
+    ]
+  },
+
+  "courses": {
+    "dj_master_pro": {
+      "name": "DJ Master Pro",
+      "description": "Programa profesional de mezcla para DJs.",
+      "duration": {
+        "weeks": 8,
+        "months": 2
+      },
+      "price": 3300000,
+      "currency": "COP",
+      "levels": [
+        {
+          "name": "DJ Essential",
+          "modules": [
+            "Nivel I - Básico",
+            "Nivel II - Intermedio"
+          ]
+        },
+        {
+          "name": "DJ Pro Experto",
+          "modules": [
+            "Nivel III - Avanzado",
+            "Nivel IV - Experto"
+          ]
+        }
+      ]
+    },
+
+    "music_production": {
+      "name": "Producción Musical",
+      "description": "Programa profesional en Ableton Live.",
+      "duration": {
+        "weeks": 8,
+        "months": 2
+      },
+      "price": 3300000,
+      "currency": "COP",
+      "levels": [
+        "Nivel I - Fundamentos de Producción",
+        "Nivel II - Creación de Tracks",
+        "Nivel III - Sound Design & Performance",
+        "Nivel IV - Mixing & Mastering"
+      ]
+    },
+
+    "dj_producer_master": {
+      "name": "Master DJ Productor",
+      "description": "Incluye DJ Master Pro + Producción Musical.",
+      "duration": {
+        "weeks": 16,
+        "months": 4
+      },
+      "price": 5900000,
+      "currency": "COP",
+      "includes": [
+        "DJ Master Pro",
+        "Producción Musical"
+      ]
+    }
+  },
+
+  "schedules": {
+    "available": [
+      "Lunes y Miércoles",
+      "Martes y Jueves",
+      "Sábados"
+    ]
+  },
+
+  "locations": [
+    {
+      "city": "Bogotá"
+    },
+    {
+      "city": "Chía"
+    }
+  ],
+
+  "payments": {
+    "methods": [
+      "Transferencia bancaria",
+      "Tarjeta débito",
+      "Tarjeta crédito",
+      "Efectivo"
+    ]
+  },
+
+  "frequently_asked_questions": [
+    {
+      "question": "¿Necesito experiencia previa?",
+      "answer": "No. Puedes comenzar desde cero."
+    },
+    {
+      "question": "¿Debo tener equipos?",
+      "answer": "No. La academia proporciona los equipos durante las clases."
+    },
+    {
+      "question": "¿Entregan certificado?",
+      "answer": "Sí. Al aprobar el programa."
+    },
+    {
+      "question": "¿Hay clases presenciales?",
+      "answer": "Sí. En Bogotá y Chía."
+    }
+  ],
+
+  "contact": {
+    "website": "https://www.djacademy.com.co",
+    "instagram": "@djacademy",
+    "facebook": "Deejay Academy"
+  }
+}
