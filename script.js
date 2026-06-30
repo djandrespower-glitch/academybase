@@ -31,7 +31,7 @@ async function fbUpd(col, id, data) { await updateDoc(doc(db, col, id), {...data
 async function fbSet(col, id, data) { await setDoc(doc(db, col, id), {...data, _ts: serverTimestamp()}, {merge:true}); }
 async function fbDel(col, id) { await deleteDoc(doc(db, col, id)); }
 
-var DB = { alumnos:[], pagos:[], cuotas:[], asistencias:[], cursos:[], horario_grupos:[], egresos:[], cat_egreso:[], cat_pag_for:[], cat_pag_est:[], cat_pag_form:[], cat_pag_cur:[], colaboradores:[], calendario_plan:[], calendario_plan_fs:[], caja_movimientos:[] };
+var DB = { alumnos:[], pagos:[], cuotas:[], asistencias:[], cursos:[], horario_grupos:[], egresos:[], cat_egreso:[], cat_pag_for:[], cat_pag_est:[], cat_pag_form:[], cat_pag_cur:[], colaboradores:[], calendario_plan:[], calendario_plan_fs:[], caja_movimientos:[], prospectos:[], embudo_etapas:[] };
 
 function listenCol(col, key, cb) {
   const q = query(collection(db, col), orderBy("_ts", "desc"));
@@ -174,6 +174,8 @@ function initApp() {
   listenCol("cat_pag_for",    "cat_pag_for",    function(){ poblarSelectsPag(); if(document.getElementById('page-pagos').classList.contains('active')) renderPagos(); });
   listenCol("cat_pag_est",    "cat_pag_est",    function(){ poblarSelectsPag(); if(document.getElementById('page-pagos').classList.contains('active')) renderPagos(); });
   listenCol("cat_pag_form",   "cat_pag_form",   function(){ poblarSelectsPag(); if(document.getElementById('page-pagos').classList.contains('active')) renderPagos(); });
+  listenCol('embudo_etapas', 'embudo_etapas', function(){ initEtapasDefault(); if(document.getElementById('page-embudo').classList.contains('active')) renderEmbudo(); });
+  listenCol('prospectos',    'prospectos',    function(){ if(document.getElementById('page-embudo').classList.contains('active')) renderEmbudo(); });
 }
 
 window.addEventListener("DOMContentLoaded", function() {
@@ -298,7 +300,7 @@ window.showPage=function(id,el){
   document.querySelectorAll('.ni').forEach(function(n){n.classList.remove('active')});
   document.getElementById('page-'+id).classList.add('active');
   if(el)el.classList.add('active');
-  var T={dashboard:'Dashboard',alertas:'Alertas',alumnos:'Alumnos',cursos:'Cursos',colaboradores:'Colaboradores',asistencia:'Asistencia',pagos:'Pagos',egresos:'Egresos',caja:'Efectivo / Caja',reporte:'Reportes',horarios_aulas:'Horarios por Cursos',calendario:'Calendario Académico',exportar:'Exportar Base'};
+  var T={dashboard:'Dashboard',alertas:'Alertas',alumnos:'Alumnos',cursos:'Cursos',colaboradores:'Colaboradores',asistencia:'Asistencia',pagos:'Pagos',egresos:'Egresos',caja:'Efectivo / Caja',reporte:'Reportes',horarios_aulas:'Horarios por Cursos',calendario:'Calendario Académico',exportar:'Exportar Base',embudo:'Embudo de ventas'};
   document.getElementById('page-title').textContent=T[id]||id;
   var ac=document.getElementById('topbar-acts');
   var logoutBtn=document.getElementById('_logout_btn');
@@ -316,7 +318,7 @@ window.showPage=function(id,el){
   }
   // Re-append user label
   if(userLbl){ac.appendChild(userLbl)}
-  var fns={dashboard:renderDash,alertas:renderAlertas,alumnos:renderAlumnos,cursos:renderCursos,colaboradores:renderColaboradores,pagos:renderPagos,egresos:renderEgresos,caja:renderCaja,reporte:renderReporte,asistencia:renderAsistencia,horarios_aulas:window.initHorariosPage,calendario:function(){renderCalPlan();renderCalPlanFS();},exportar:function(){}};
+  var fns={dashboard:renderDash,alertas:renderAlertas,alumnos:renderAlumnos,cursos:renderCursos,colaboradores:renderColaboradores,pagos:renderPagos,egresos:renderEgresos,caja:renderCaja,reporte:renderReporte,asistencia:renderAsistencia,horarios_aulas:window.initHorariosPage,calendario:function(){renderCalPlan();renderCalPlanFS();},exportar:function(){},embudo:renderEmbudo};
   if(fns[id])fns[id]();
 }
 
@@ -1438,3 +1440,253 @@ async function importarJSON(data){
   }
   if(el)el.innerHTML='<span style="color:#15803d;font-weight:600">OK - '+done+' registros importados</span>';
 }
+
+// ══════════════════════════════════════════════════════════════
+// MÓDULO: EMBUDO DE VENTAS
+// ══════════════════════════════════════════════════════════════
+
+var _embudoDragId  = null;
+var _etapaEditId   = null;
+var _prospEditId   = null;
+var _etapaColorSel = '#6b7280';
+
+var ETAPAS_DEFAULT = [
+  { nombre:'Nuevo contacto', color:'#6b7280', orden:0 },
+  { nombre:'Contactado',     color:'#2563eb', orden:1 },
+  { nombre:'Interesado',     color:'#ca8a04', orden:2 },
+  { nombre:'Propuesta',      color:'#7c3aed', orden:3 },
+  { nombre:'Matriculado',    color:'#16a34a', orden:4 }
+];
+
+async function initEtapasDefault() {
+  if (DB.embudo_etapas.length === 0) {
+    for (var i = 0; i < ETAPAS_DEFAULT.length; i++) {
+      await fbAdd('embudo_etapas', ETAPAS_DEFAULT[i]);
+    }
+  }
+}
+
+function renderEmbudo() {
+  var board = document.getElementById('embudo-board');
+  if (!board) return;
+  var etapas = DB.embudo_etapas.slice().sort(function(a,b){ return (a.orden||0)-(b.orden||0); });
+  var totalVal = DB.prospectos.reduce(function(s,p){ return s+(parseFloat(p.valor)||0); }, 0);
+  var cntEl = document.getElementById('embudo-count');
+  var totEl = document.getElementById('embudo-total');
+  if (cntEl) cntEl.textContent = DB.prospectos.length + ' prospecto' + (DB.prospectos.length===1?'':'s');
+  if (totEl) totEl.textContent = '$' + totalVal.toLocaleString('es-CO');
+
+  if (!etapas.length) {
+    board.innerHTML = '<div style="color:#aaa;font-size:13px;padding:24px">Crea tu primera etapa con el botón "Gestionar etapas".</div>';
+    return;
+  }
+
+  board.innerHTML = etapas.map(function(etapa) {
+    var cards = DB.prospectos.filter(function(p){ return p.etapaId === etapa.id; });
+    var etapaVal = cards.reduce(function(s,p){ return s+(parseFloat(p.valor)||0); }, 0);
+    return '<div class="embudo-col" data-etapa="'+etapa.id+'" '
+      + 'ondragover="embudoDragOver(event)" '
+      + 'ondrop="embudoDrop(event,\''+etapa.id+'\')" '
+      + 'ondragleave="this.classList.remove(\'drag-over\')">'
+      + '<div class="embudo-col-head" style="border-top:3px solid '+etapa.color+'">'
+        + '<div style="display:flex;align-items:center;gap:6px">'
+          + '<span style="font-weight:600;font-size:13px">'+etapa.nombre+'</span>'
+          + '<span style="background:#f0f0f0;border-radius:10px;padding:1px 8px;font-size:11px;color:#666">'+cards.length+'</span>'
+        + '</div>'
+        + '<div style="display:flex;align-items:center;gap:4px">'
+          + (etapaVal ? '<span style="font-size:11px;color:#888">$'+Math.round(etapaVal/1000)+'k</span>' : '')
+          + '<button class="btn bo bsm" onclick="editEtapa(\''+etapa.id+'\')" '
+          + 'style="padding:2px 5px;font-size:10px;line-height:1">&#9998;</button>'
+        + '</div>'
+      + '</div>'
+      + '<div class="embudo-cards" id="cards-'+etapa.id+'">'
+        + (cards.length ? cards.map(function(p){ return renderEmbudoCard(p); }).join('') : '<div style="font-size:11px;color:#ccc;text-align:center;padding:8px">Sin prospectos</div>')
+      + '</div>'
+      + '<button class="btn bo" onclick="nuevoProspecto(\''+etapa.id+'\')" '
+      + 'style="width:100%;margin-top:8px;font-size:12px;color:#bbb;border-style:dashed;padding:5px">+ Agregar</button>'
+      + '</div>';
+  }).join('')
+  + '<div style="padding-top:38px">'
+    + '<button class="btn bo" onclick="nuevaEtapa()" '
+    + 'style="writing-mode:vertical-lr;height:90px;font-size:11px;color:#ccc;border-style:dashed;padding:6px 5px">+ Nueva etapa</button>'
+  + '</div>';
+}
+
+function renderEmbudoCard(p) {
+  return '<div class="embudo-card" draggable="true" '
+    + 'ondragstart="embudoDragStart(event,\''+p.id+'\')" '
+    + 'onclick="verProspecto(\''+p.id+'\')">'
+    + '<div style="font-weight:600;font-size:13px;margin-bottom:3px">'+(p.nombre||'Sin nombre')+'</div>'
+    + (p.telefono ? '<div style="font-size:11px;color:#777;margin-bottom:1px">&#128241; '+p.telefono+'</div>' : '')
+    + (p.curso    ? '<div style="font-size:11px;color:#777;margin-bottom:1px">&#127891; '+p.curso+'</div>' : '')
+    + (p.valor    ? '<div style="font-size:12px;color:#16a34a;font-weight:600;margin-top:3px">$'+parseFloat(p.valor).toLocaleString('es-CO')+'</div>' : '')
+    + (p.fecha    ? '<div style="font-size:10px;color:#ccc;margin-top:3px">'+p.fecha+'</div>' : '')
+    + '</div>';
+}
+
+// ─── DRAG & DROP ──────────────────────────────────────────────
+window.embudoDragStart = function(e, id) {
+  _embudoDragId = id;
+  e.dataTransfer.effectAllowed = 'move';
+};
+window.embudoDragOver = function(e) {
+  e.preventDefault();
+  e.currentTarget.classList.add('drag-over');
+};
+window.embudoDrop = async function(e, etapaId) {
+  e.preventDefault();
+  document.querySelectorAll('.embudo-col').forEach(function(c){ c.classList.remove('drag-over'); });
+  if (!_embudoDragId) return;
+  await fbUpd('prospectos', _embudoDragId, { etapaId: etapaId });
+  _embudoDragId = null;
+};
+
+// ─── CRUD PROSPECTOS ──────────────────────────────────────────
+window.nuevoProspecto = function(etapaId) {
+  _prospEditId = null;
+  document.getElementById('mp-tit').textContent = 'Nuevo prospecto';
+  document.getElementById('mp-nom').value   = '';
+  document.getElementById('mp-tel').value   = '';
+  document.getElementById('mp-curso').value = '';
+  document.getElementById('mp-valor').value = '';
+  document.getElementById('mp-notas').value = '';
+  document.getElementById('mp-fecha').value = new Date().toISOString().split('T')[0];
+  var etapas = DB.embudo_etapas.slice().sort(function(a,b){ return (a.orden||0)-(b.orden||0); });
+  var sel = document.getElementById('mp-etapa');
+  sel.innerHTML = etapas.map(function(e){ return '<option value="'+e.id+'">'+e.nombre+'</option>'; }).join('');
+  if (etapaId) sel.value = etapaId;
+  document.getElementById('mp-del').style.display       = 'none';
+  document.getElementById('mp-convertir').style.display = 'none';
+  openM('m-prospecto');
+};
+
+window.verProspecto = function(id) {
+  var p = DB.prospectos.find(function(x){ return x.id === id; });
+  if (!p) return;
+  _prospEditId = id;
+  document.getElementById('mp-tit').textContent  = 'Editar prospecto';
+  document.getElementById('mp-nom').value   = p.nombre   || '';
+  document.getElementById('mp-tel').value   = p.telefono || '';
+  document.getElementById('mp-curso').value = p.curso    || '';
+  document.getElementById('mp-valor').value = p.valor    || '';
+  document.getElementById('mp-notas').value = p.notas    || '';
+  document.getElementById('mp-fecha').value = p.fecha    || '';
+  var etapas = DB.embudo_etapas.slice().sort(function(a,b){ return (a.orden||0)-(b.orden||0); });
+  var sel = document.getElementById('mp-etapa');
+  sel.innerHTML = etapas.map(function(e){ return '<option value="'+e.id+'">'+e.nombre+'</option>'; }).join('');
+  sel.value = p.etapaId || '';
+  document.getElementById('mp-del').style.display = '';
+  var ultima = etapas[etapas.length - 1];
+  document.getElementById('mp-convertir').style.display = (ultima && p.etapaId === ultima.id) ? '' : 'none';
+  openM('m-prospecto');
+};
+
+window.saveProspecto = async function() {
+  var nom = document.getElementById('mp-nom').value.trim();
+  if (!nom) { alert('El nombre es requerido'); return; }
+  var data = {
+    nombre:   nom,
+    telefono: document.getElementById('mp-tel').value.trim(),
+    curso:    document.getElementById('mp-curso').value.trim(),
+    valor:    parseFloat(document.getElementById('mp-valor').value) || 0,
+    notas:    document.getElementById('mp-notas').value.trim(),
+    fecha:    document.getElementById('mp-fecha').value,
+    etapaId:  document.getElementById('mp-etapa').value
+  };
+  if (_prospEditId) { await fbUpd('prospectos', _prospEditId, data); }
+  else              { await fbAdd('prospectos', data); }
+  closeM('m-prospecto');
+};
+
+window.delProspecto = function() {
+  if (!_prospEditId) return;
+  var pid = _prospEditId;
+  confirmDel('Eliminar este prospecto?', async function() {
+    await fbDel('prospectos', pid);
+  });
+  closeM('m-prospecto');
+};
+
+window.convertirEnAlumno = function() {
+  var p = DB.prospectos.find(function(x){ return x.id === _prospEditId; });
+  if (!p) return;
+  closeM('m-prospecto');
+  setTimeout(function() {
+    showPage('alumnos');
+    setTimeout(function() {
+      window.openMAl();
+      setTimeout(function() {
+        var nomEl = document.getElementById('f-nom');
+        var telEl = document.getElementById('f-tel');
+        if (nomEl) nomEl.value = p.nombre   || '';
+        if (telEl) telEl.value = p.telefono || '';
+      }, 150);
+    }, 200);
+  }, 100);
+};
+
+// ─── CRUD ETAPAS ──────────────────────────────────────────────
+window.selEtapaColor = function(color, el) {
+  _etapaColorSel = color;
+  document.getElementById('met-color').value = color;
+  document.querySelectorAll('.met-col-opt').forEach(function(d){ d.style.border = '2px solid transparent'; });
+  if (el) el.style.border = '2px solid #1a1a1a';
+};
+
+window.nuevaEtapa = function() {
+  _etapaEditId   = null;
+  _etapaColorSel = '#6b7280';
+  document.getElementById('met-tit').textContent = 'Nueva etapa';
+  document.getElementById('met-nom').value       = '';
+  document.getElementById('met-color').value     = '#6b7280';
+  document.querySelectorAll('.met-col-opt').forEach(function(d){ d.style.border = '2px solid transparent'; });
+  var def = document.querySelector('.met-col-opt[data-c="#6b7280"]');
+  if (def) def.style.border = '2px solid #1a1a1a';
+  document.getElementById('met-del').style.display = 'none';
+  openM('m-etapa');
+};
+
+window.editEtapa = function(id) {
+  var e = DB.embudo_etapas.find(function(x){ return x.id === id; });
+  if (!e) return;
+  _etapaEditId   = id;
+  _etapaColorSel = e.color || '#6b7280';
+  document.getElementById('met-tit').textContent = 'Editar etapa';
+  document.getElementById('met-nom').value       = e.nombre || '';
+  document.getElementById('met-color').value     = e.color  || '#6b7280';
+  document.querySelectorAll('.met-col-opt').forEach(function(d){
+    d.style.border = d.getAttribute('data-c') === e.color ? '2px solid #1a1a1a' : '2px solid transparent';
+  });
+  document.getElementById('met-del').style.display = '';
+  openM('m-etapa');
+};
+
+window.saveEtapa = async function() {
+  var nom = document.getElementById('met-nom').value.trim();
+  if (!nom) { alert('El nombre es requerido'); return; }
+  var data = {
+    nombre: nom,
+    color:  document.getElementById('met-color').value || _etapaColorSel,
+    orden:  _etapaEditId
+      ? ((DB.embudo_etapas.find(function(e){ return e.id === _etapaEditId; }) || {}).orden || 0)
+      : DB.embudo_etapas.length
+  };
+  if (_etapaEditId) { await fbUpd('embudo_etapas', _etapaEditId, data); }
+  else              { await fbAdd('embudo_etapas', data); }
+  closeM('m-etapa');
+};
+
+window.delEtapa = function() {
+  if (!_etapaEditId) return;
+  var enUso = DB.prospectos.filter(function(p){ return p.etapaId === _etapaEditId; }).length;
+  if (enUso > 0) {
+    alert('Esta etapa tiene ' + enUso + ' prospecto(s). Muevelos a otra etapa primero.');
+    return;
+  }
+  var eid = _etapaEditId;
+  confirmDel('Eliminar esta etapa?', async function() {
+    await fbDel('embudo_etapas', eid);
+  });
+  closeM('m-etapa');
+};
+// ── FIN MÓDULO EMBUDO DE VENTAS ──────────────────────────────
