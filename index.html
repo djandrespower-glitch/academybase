@@ -618,6 +618,16 @@
       z-index: 999;
       display: none
     }
+    /* ── EMBUDO DE VENTAS ── */
+    .embudo-wrap{overflow-x:auto;padding:2px 0 12px}
+    .embudo-board{display:flex;gap:12px;min-width:max-content;align-items:flex-start;padding-bottom:8px}
+    .embudo-col{background:#fff;border-radius:10px;border:.5px solid #e0e0e0;width:252px;flex-shrink:0;display:flex;flex-direction:column;padding:12px;transition:background .15s,border-color .15s}
+    .embudo-col.drag-over{background:#eff6ff;border-color:#2563eb}
+    .embudo-col-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid #f0f0f0}
+    .embudo-cards{display:flex;flex-direction:column;gap:7px;min-height:44px}
+    .embudo-card{background:#fafafa;border:1px solid #ebebeb;border-radius:8px;padding:10px 11px;cursor:grab;transition:box-shadow .15s,border-color .15s}
+    .embudo-card:hover{box-shadow:0 2px 8px rgba(0,0,0,.07);border-color:#c0392b;background:#fff}
+    .embudo-card:active{cursor:grabbing;opacity:.88}
   </style>
 </head>
 
@@ -643,6 +653,8 @@
           </svg>Alertas <span id="badge-al"
             style="margin-left:auto;display:none;background:#fee2e2;color:#b91c1c;border-radius:20px;font-size:10px;padding:1px 6px">0</span>
         </div>
+        <div class="ns">Ventas</div>
+        <div class="ni" onclick="showPage('embudo',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3h18v3H3z"/><path d="M5 6l2 15h10l2-15"/><line x1="9" y1="12" x2="15" y2="12"/><line x1="10" y1="16" x2="14" y2="16"/></svg>Embudo de ventas</div>
         <div class="ns">Academia</div>
         <div class="ni" onclick="showPage('alumnos',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
             stroke-width="2">
@@ -1158,6 +1170,27 @@
           </div>
         </div>
 
+        <!-- ── EMBUDO DE VENTAS ── -->
+        <div class="page" id="page-embudo">
+          <div class="ttb" style="background:#fff;border-radius:10px;border:.5px solid #e0e0e0;margin-bottom:14px;flex-wrap:wrap;gap:8px">
+            <div style="display:flex;align-items:center;gap:12px">
+              <span id="embudo-count" style="font-size:13px;color:#666;font-weight:500">0 prospectos</span>
+              <span style="color:#ddd">|</span>
+              <span style="font-size:12px;color:#888">Valor potencial:</span>
+              <span id="embudo-total" style="font-size:13px;font-weight:700;color:#16a34a">$0</span>
+            </div>
+            <div style="display:flex;gap:8px">
+              <button class="btn bp bsm" onclick="nuevoProspecto()">+ Prospecto</button>
+              <button class="btn bo bsm" onclick="nuevaEtapa()">&#9881; Gestionar etapas</button>
+            </div>
+          </div>
+          <div class="embudo-wrap">
+            <div class="embudo-board" id="embudo-board">
+              <div style="color:#aaa;font-size:13px;padding:24px">Cargando embudo...</div>
+            </div>
+          </div>
+        </div>
+
       </div>
     </div>
   </div>
@@ -1566,6 +1599,66 @@
   </div>
 
   <!-- ✅ FIREBASE + SCRIPT PRINCIPAL -->
+  <!-- Modal Prospecto -->
+  <div class="ov" id="m-prospecto">
+    <div class="modal" style="max-width:440px">
+      <div class="mh">
+        <h3 id="mp-tit">Nuevo prospecto</h3>
+        <button class="btn bo bsm" onclick="closeM('m-prospecto')">X</button>
+      </div>
+      <div class="mb">
+        <div class="fg" style="grid-template-columns:1fr 1fr">
+          <div class="fgp" style="grid-column:1/-1"><label>Nombre *</label><input id="mp-nom" placeholder="Nombre completo"></div>
+          <div class="fgp"><label>Teléfono</label><input id="mp-tel" placeholder="+57..."></div>
+          <div class="fgp"><label>Fecha</label><input id="mp-fecha" type="date"></div>
+          <div class="fgp" style="grid-column:1/-1"><label>Curso de interés</label><input id="mp-curso" placeholder="Ej: DJ Master Pro"></div>
+          <div class="fgp"><label>Valor potencial (COP)</label><input id="mp-valor" type="number" placeholder="0" min="0"></div>
+          <div class="fgp"><label>Etapa</label><select id="mp-etapa"></select></div>
+          <div class="fgp" style="grid-column:1/-1"><label>Notas</label><textarea id="mp-notas" placeholder="Observaciones, origen del contacto..."></textarea></div>
+        </div>
+      </div>
+      <div class="mf">
+        <button class="btn bd bsm" id="mp-del" style="margin-right:auto;display:none" onclick="delProspecto()">Eliminar</button>
+        <button class="btn bs bsm" id="mp-convertir" style="display:none" onclick="convertirEnAlumno()">&#10003; Convertir en alumno</button>
+        <button class="btn bo" onclick="closeM('m-prospecto')">Cancelar</button>
+        <button class="btn bp" onclick="saveProspecto()">Guardar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Etapa -->
+  <div class="ov" id="m-etapa">
+    <div class="modal" style="max-width:340px">
+      <div class="mh">
+        <h3 id="met-tit">Nueva etapa</h3>
+        <button class="btn bo bsm" onclick="closeM('m-etapa')">X</button>
+      </div>
+      <div class="mb">
+        <div class="fg" style="grid-template-columns:1fr">
+          <div class="fgp"><label>Nombre de la etapa *</label><input id="met-nom" placeholder="Ej: Seguimiento"></div>
+          <div class="fgp"><label>Color de la etapa</label>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px" id="met-colores">
+              <div class="met-col-opt" data-c="#6b7280" onclick="selEtapaColor('#6b7280',this)" style="width:28px;height:28px;border-radius:50%;background:#6b7280;cursor:pointer;border:2px solid #1a1a1a"></div>
+              <div class="met-col-opt" data-c="#2563eb" onclick="selEtapaColor('#2563eb',this)" style="width:28px;height:28px;border-radius:50%;background:#2563eb;cursor:pointer;border:2px solid transparent"></div>
+              <div class="met-col-opt" data-c="#ca8a04" onclick="selEtapaColor('#ca8a04',this)" style="width:28px;height:28px;border-radius:50%;background:#ca8a04;cursor:pointer;border:2px solid transparent"></div>
+              <div class="met-col-opt" data-c="#7c3aed" onclick="selEtapaColor('#7c3aed',this)" style="width:28px;height:28px;border-radius:50%;background:#7c3aed;cursor:pointer;border:2px solid transparent"></div>
+              <div class="met-col-opt" data-c="#16a34a" onclick="selEtapaColor('#16a34a',this)" style="width:28px;height:28px;border-radius:50%;background:#16a34a;cursor:pointer;border:2px solid transparent"></div>
+              <div class="met-col-opt" data-c="#c0392b" onclick="selEtapaColor('#c0392b',this)" style="width:28px;height:28px;border-radius:50%;background:#c0392b;cursor:pointer;border:2px solid transparent"></div>
+              <div class="met-col-opt" data-c="#0891b2" onclick="selEtapaColor('#0891b2',this)" style="width:28px;height:28px;border-radius:50%;background:#0891b2;cursor:pointer;border:2px solid transparent"></div>
+              <div class="met-col-opt" data-c="#ea580c" onclick="selEtapaColor('#ea580c',this)" style="width:28px;height:28px;border-radius:50%;background:#ea580c;cursor:pointer;border:2px solid transparent"></div>
+            </div>
+            <input type="hidden" id="met-color" value="#6b7280">
+          </div>
+        </div>
+      </div>
+      <div class="mf">
+        <button class="btn bd bsm" id="met-del" style="margin-right:auto;display:none" onclick="delEtapa()">Eliminar etapa</button>
+        <button class="btn bo" onclick="closeM('m-etapa')">Cancelar</button>
+        <button class="btn bp" onclick="saveEtapa()">Guardar etapa</button>
+      </div>
+    </div>
+  </div>
+
   <script type="module" src="script.js"></script>
 
 </body>
