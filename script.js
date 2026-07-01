@@ -31,7 +31,7 @@ async function fbUpd(col, id, data) { await updateDoc(doc(db, col, id), {...data
 async function fbSet(col, id, data) { await setDoc(doc(db, col, id), {...data, _ts: serverTimestamp()}, {merge:true}); }
 async function fbDel(col, id) { await deleteDoc(doc(db, col, id)); }
 
-var DB = { alumnos:[], pagos:[], cuotas:[], asistencias:[], cursos:[], horario_grupos:[], egresos:[], cat_egreso:[], cat_pag_for:[], cat_pag_est:[], cat_pag_form:[], cat_pag_cur:[], colaboradores:[], calendario_plan:[], calendario_plan_fs:[], caja_movimientos:[], prospectos:[], embudo_etapas:[] };
+var DB = { alumnos:[], pagos:[], cuotas:[], asistencias:[], cursos:[], horario_grupos:[], egresos:[], cat_egreso:[], cat_pag_for:[], cat_pag_est:[], cat_pag_form:[], cat_pag_cur:[], colaboradores:[], calendario_plan:[], calendario_plan_fs:[], caja_movimientos:[], prospectos:[], embudo_etapas:[], leads:[], plantillas:[], whatsapp_mensajes:[] };
 
 function listenCol(col, key, cb) {
   const q = query(collection(db, col), orderBy("_ts", "desc"));
@@ -176,6 +176,9 @@ function initApp() {
   listenCol("cat_pag_form",   "cat_pag_form",   function(){ poblarSelectsPag(); if(document.getElementById('page-pagos').classList.contains('active')) renderPagos(); });
   listenCol('embudo_etapas', 'embudo_etapas', function(){ initEtapasDefault(); if(document.getElementById('page-embudo').classList.contains('active')) renderEmbudo(); });
   listenCol('prospectos',    'prospectos',    function(){ if(document.getElementById('page-embudo').classList.contains('active')) renderEmbudo(); });
+  listenCol('leads',         'leads',         function(){ if(document.getElementById('page-leads').classList.contains('active')) renderLeads(); });
+  listenCol('plantillas',    'plantillas',    function(){ poblarSelectPlantillasInbox(); if(document.getElementById('page-plantillas').classList.contains('active')) renderPlantillas(); });
+  listenCol('whatsapp_mensajes','whatsapp_mensajes', function(){ renderInboxBadge(); if(document.getElementById('page-inbox').classList.contains('active')) renderInbox(); });
 }
 
 window.addEventListener("DOMContentLoaded", function() {
@@ -306,7 +309,7 @@ window.showPage=function(id,el){
   document.querySelectorAll('.ni').forEach(function(n){n.classList.remove('active')});
   document.getElementById('page-'+id).classList.add('active');
   if(el)el.classList.add('active');
-  var T={dashboard:'Dashboard',alertas:'Alertas',alumnos:'Alumnos',cursos:'Cursos',colaboradores:'Colaboradores',asistencia:'Asistencia',pagos:'Pagos',egresos:'Egresos',caja:'Efectivo / Caja',reporte:'Reportes',horarios_aulas:'Horarios por Cursos',calendario:'Calendario Académico',exportar:'Exportar Base',embudo:'Embudo de ventas'};
+  var T={dashboard:'Dashboard',alertas:'Alertas',alumnos:'Alumnos',cursos:'Cursos',colaboradores:'Colaboradores',asistencia:'Asistencia',pagos:'Pagos',egresos:'Egresos',caja:'Efectivo / Caja',reporte:'Reportes',horarios_aulas:'Horarios por Cursos',calendario:'Calendario Académico',exportar:'Exportar Base',embudo:'Embudo de ventas',inbox:'Inbox WhatsApp',leads:'Contactos',plantillas:'Plantillas'};
   document.getElementById('page-title').textContent=T[id]||id;
   var ac=document.getElementById('topbar-acts');
   var logoutBtn=document.getElementById('_logout_btn');
@@ -317,6 +320,8 @@ window.showPage=function(id,el){
   if(id==='cursos')ac.innerHTML='<button class="btn bp bsm" onclick="openMCur()">+ Nuevo curso</button>';
   if(id==='egresos')ac.innerHTML='<button class="btn bp bsm" onclick="openMEg()">+ Nuevo egreso</button>';
   if(id==='colaboradores')ac.innerHTML='<button class="btn bp bsm" onclick="openMCol()">+ Nuevo colaborador</button>';
+  if(id==='leads')ac.innerHTML='<button class="btn bp bsm" onclick="nuevoLead()">+ Nuevo contacto</button>';
+  if(id==='plantillas')ac.innerHTML='<button class="btn bp bsm" onclick="nuevaPlantilla()">+ Nueva plantilla</button>';
   if(logoutBtn){ac.appendChild(logoutBtn)}
   else if(rolActual){
     var btn=document.createElement('button');btn.id='_logout_btn';btn.className='btn bo bsm';
@@ -324,7 +329,7 @@ window.showPage=function(id,el){
   }
   // Re-append user label
   if(userLbl){ac.appendChild(userLbl)}
-  var fns={dashboard:renderDash,alertas:renderAlertas,alumnos:renderAlumnos,cursos:renderCursos,colaboradores:renderColaboradores,pagos:renderPagos,egresos:renderEgresos,caja:renderCaja,reporte:renderReporte,asistencia:renderAsistencia,horarios_aulas:window.initHorariosPage,calendario:function(){renderCalPlan();renderCalPlanFS();},exportar:function(){},embudo:renderEmbudo};
+  var fns={dashboard:renderDash,alertas:renderAlertas,alumnos:renderAlumnos,cursos:renderCursos,colaboradores:renderColaboradores,pagos:renderPagos,egresos:renderEgresos,caja:renderCaja,reporte:renderReporte,asistencia:renderAsistencia,horarios_aulas:window.initHorariosPage,calendario:function(){renderCalPlan();renderCalPlanFS();},exportar:function(){},embudo:renderEmbudo,inbox:function(){renderInbox();poblarSelectPlantillasInbox();},leads:renderLeads,plantillas:renderPlantillas};
   if(fns[id])fns[id]();
 }
 
@@ -1711,3 +1716,270 @@ window.delEtapa = function() {
   closeM('m-etapa');
 };
 // ── FIN MÓDULO EMBUDO DE VENTAS ──────────────────────────────
+
+// ══════════════════════════════════════════════════════════════
+// HELPER COMPARTIDO: timestamp Firestore -> milisegundos
+// ══════════════════════════════════════════════════════════════
+function getTsMs(x){
+  if (!x || !x._ts) return 0;
+  if (typeof x._ts.toMillis === 'function') return x._ts.toMillis();
+  if (x._ts.seconds) return x._ts.seconds*1000;
+  return 0;
+}
+
+// ══════════════════════════════════════════════════════════════
+// MÓDULO: CONTACTOS (LEADS ENTRANTES DE WHATSAPP)
+// ══════════════════════════════════════════════════════════════
+var _leadEditId = null;
+var LEAD_ESTADOS = { nuevo:{lbl:'Nuevo',cls:'br'}, contactado:{lbl:'Contactado',cls:'by'}, archivado:{lbl:'Archivado',cls:'bgr'} };
+
+window.renderLeads = function renderLeads(){
+  var el=document.getElementById('leads-lista'); if(!el) return;
+  var filtro=(document.getElementById('leads-filtro')||{}).value||'';
+  var busq=((document.getElementById('leads-busq')||{}).value||'').toLowerCase().trim();
+  var arr=DB.leads.slice().sort(function(a,b){ return getTsMs(b)-getTsMs(a); });
+  if(filtro) arr=arr.filter(function(l){ return (l.estado||'nuevo')===filtro; });
+  if(busq) arr=arr.filter(function(l){ return (l.nombre||'').toLowerCase().indexOf(busq)>-1 || (l.telefono||'').indexOf(busq)>-1; });
+  var cntEl=document.getElementById('leads-count'); if(cntEl) cntEl.textContent=arr.length+' contacto'+(arr.length===1?'':'s');
+  if(!arr.length){ el.innerHTML='<p style="color:#aaa;padding:20px">Sin contactos todavia.</p>'; return; }
+  el.innerHTML=arr.map(function(l){
+    var est=LEAD_ESTADOS[l.estado||'nuevo'];
+    return '<div class="cc" style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">'
+      +'<div style="flex:1;min-width:180px">'
+        +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:3px"><b style="font-size:14px">'+(l.nombre||'Sin nombre')+'</b><span class="bdg '+est.cls+'">'+est.lbl+'</span></div>'
+        +'<div style="font-size:12px;color:#888">&#128241; '+(l.telefono||'-')+(l.origen?' &middot; '+l.origen:'')+'</div>'
+        +(l.mensaje?'<div style="font-size:12px;color:#666;margin-top:4px;max-width:520px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">&ldquo;'+l.mensaje+'&rdquo;</div>':'')
+      +'</div>'
+      +'<div style="display:flex;gap:6px;flex-shrink:0">'
+        +(l.telefono?'<button class="btn bo bsm" onclick="abrirChatDesdeLead(\''+l.telefono+'\')">&#128172; Chat</button>':'')
+        +'<button class="btn bs bsm" onclick="convertirLeadProspecto(\''+l.id+'\')">&#10003; A prospecto</button>'
+        +'<button class="btn bo bsm" onclick="editLead(\''+l.id+'\')">Editar</button>'
+        +'<button class="btn bd bsm" onclick="delLead(\''+l.id+'\')">X</button>'
+      +'</div>'
+    +'</div>';
+  }).join('');
+};
+
+window.nuevoLead=function(){
+  _leadEditId=null;
+  document.getElementById('ml-tit').textContent='Nuevo contacto';
+  ['ml-nom','ml-tel','ml-msg','ml-notas'].forEach(function(id){document.getElementById(id).value=''});
+  document.getElementById('ml-estado').value='nuevo';
+  document.getElementById('ml-del').style.display='none';
+  openM('m-lead');
+};
+window.editLead=function(id){
+  var l=DB.leads.find(function(x){return x.id===id}); if(!l) return;
+  _leadEditId=id;
+  document.getElementById('ml-tit').textContent='Editar contacto';
+  document.getElementById('ml-nom').value=l.nombre||'';
+  document.getElementById('ml-tel').value=l.telefono||'';
+  document.getElementById('ml-msg').value=l.mensaje||'';
+  document.getElementById('ml-notas').value=l.notas||'';
+  document.getElementById('ml-estado').value=l.estado||'nuevo';
+  document.getElementById('ml-del').style.display='';
+  openM('m-lead');
+};
+window.saveLead=async function(){
+  var nom=document.getElementById('ml-nom').value.trim();
+  var tel=document.getElementById('ml-tel').value.trim();
+  if(!nom && !tel){ alert('Ingresa al menos nombre o telefono'); return; }
+  var data={
+    nombre:nom, telefono:tel,
+    mensaje:document.getElementById('ml-msg').value.trim(),
+    notas:document.getElementById('ml-notas').value.trim(),
+    estado:document.getElementById('ml-estado').value
+  };
+  if(_leadEditId){ await fbUpd('leads',_leadEditId,data); }
+  else { data.origen='manual'; await fbAdd('leads',data); }
+  closeM('m-lead');
+};
+window.delLead=function(id){
+  var lid=id||_leadEditId; if(!lid) return;
+  confirmDel('Eliminar este contacto?', async function(){ await fbDel('leads',lid); });
+  closeM('m-lead');
+};
+window.convertirLeadProspecto=async function(id){
+  var l=DB.leads.find(function(x){return x.id===id}); if(!l) return;
+  var etapas=DB.embudo_etapas.slice().sort(function(a,b){return (a.orden||0)-(b.orden||0)});
+  var primera=etapas[0];
+  await fbAdd('prospectos',{ nombre:l.nombre||l.telefono||'Sin nombre', telefono:l.telefono||'', curso:'', valor:0, notas:l.mensaje||'', fecha:new Date().toISOString().split('T')[0], etapaId: primera?primera.id:'' });
+  await fbUpd('leads', id, { estado:'contactado' });
+  alert('Contacto agregado al Embudo de ventas ✓');
+};
+// ── FIN MÓDULO CONTACTOS ──────────────────────────────────────
+
+// ══════════════════════════════════════════════════════════════
+// MÓDULO: PLANTILLAS DE MENSAJES (respuestas rapidas)
+// ══════════════════════════════════════════════════════════════
+var _tplEditId=null;
+
+window.renderPlantillas = function renderPlantillas(){
+  var el=document.getElementById('tpl-lista'); if(!el) return;
+  var busq=((document.getElementById('tpl-busq')||{}).value||'').toLowerCase().trim();
+  var arr=DB.plantillas.slice().sort(function(a,b){ return (a.categoria||'').localeCompare(b.categoria||'') || (a.titulo||'').localeCompare(b.titulo||''); });
+  if(busq) arr=arr.filter(function(t){ return (t.titulo||'').toLowerCase().indexOf(busq)>-1 || (t.texto||'').toLowerCase().indexOf(busq)>-1 || (t.categoria||'').toLowerCase().indexOf(busq)>-1; });
+  var cntEl=document.getElementById('tpl-count'); if(cntEl) cntEl.textContent=arr.length+' plantilla'+(arr.length===1?'':'s');
+  if(!arr.length){ el.innerHTML='<p style="color:#aaa;padding:20px">Sin plantillas. Crea la primera.</p>'; return; }
+  var grupos={};
+  arr.forEach(function(t){ var c=t.categoria||'Sin categoria'; (grupos[c]=grupos[c]||[]).push(t); });
+  el.innerHTML=Object.keys(grupos).sort().map(function(cat){
+    return '<div style="margin-bottom:18px"><div style="font-size:11px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">'+cat+'</div>'
+      +grupos[cat].map(function(t){
+        return '<div class="cc" style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start">'
+          +'<div style="flex:1;min-width:0"><b style="font-size:13px">'+t.titulo+'</b>'
+          +'<div style="font-size:12px;color:#666;margin-top:4px;white-space:pre-wrap">'+t.texto+'</div></div>'
+          +'<div style="display:flex;gap:6px;flex-shrink:0">'
+            +'<button class="btn bo bsm" onclick="copiarPlantilla(\''+t.id+'\',this)">&#128203; Copiar</button>'
+            +'<button class="btn bo bsm" onclick="editPlantilla(\''+t.id+'\')">Editar</button>'
+            +'<button class="btn bd bsm" onclick="delPlantilla(\''+t.id+'\')">X</button>'
+          +'</div>'
+        +'</div>';
+      }).join('')
+    +'</div>';
+  }).join('');
+};
+
+window.nuevaPlantilla=function(){
+  _tplEditId=null;
+  document.getElementById('mt-tit').textContent='Nueva plantilla';
+  ['mt-titulo','mt-cat','mt-texto'].forEach(function(id){document.getElementById(id).value=''});
+  document.getElementById('mt-del').style.display='none';
+  openM('m-plantilla');
+};
+window.editPlantilla=function(id){
+  var t=DB.plantillas.find(function(x){return x.id===id}); if(!t) return;
+  _tplEditId=id;
+  document.getElementById('mt-tit').textContent='Editar plantilla';
+  document.getElementById('mt-titulo').value=t.titulo||'';
+  document.getElementById('mt-cat').value=t.categoria||'';
+  document.getElementById('mt-texto').value=t.texto||'';
+  document.getElementById('mt-del').style.display='';
+  openM('m-plantilla');
+};
+window.savePlantilla=async function(){
+  var tit=document.getElementById('mt-titulo').value.trim();
+  var txt=document.getElementById('mt-texto').value.trim();
+  if(!tit||!txt){ alert('Titulo y texto son requeridos'); return; }
+  var data={ titulo:tit, categoria:document.getElementById('mt-cat').value.trim()||'General', texto:txt };
+  if(_tplEditId){ await fbUpd('plantillas',_tplEditId,data); } else { await fbAdd('plantillas',data); }
+  closeM('m-plantilla');
+};
+window.delPlantilla=function(id){
+  var tid=id||_tplEditId; if(!tid) return;
+  confirmDel('Eliminar esta plantilla?', async function(){ await fbDel('plantillas',tid); });
+  closeM('m-plantilla');
+};
+window.copiarPlantilla=function(id, btn){
+  var t=DB.plantillas.find(function(x){return x.id===id}); if(!t) return;
+  navigator.clipboard.writeText(t.texto).then(function(){
+    if(!btn) return;
+    var orig=btn.innerHTML; btn.innerHTML='&#10003; Copiado'; setTimeout(function(){btn.innerHTML=orig},1200);
+  });
+};
+function poblarSelectPlantillasInbox(){
+  var sel=document.getElementById('inbox-tpl-sel'); if(!sel) return;
+  var pv=sel.value;
+  sel.innerHTML='<option value="">Usar plantilla...</option>'+DB.plantillas.slice().sort(function(a,b){return (a.titulo||'').localeCompare(b.titulo||'')}).map(function(t){return '<option value="'+t.id+'">'+t.titulo+'</option>'}).join('');
+  sel.value=pv;
+  var dl=document.getElementById('dl-cat-tpl');
+  if(dl){ var cats=Array.from(new Set(DB.plantillas.map(function(t){return t.categoria}).filter(Boolean))); dl.innerHTML=cats.map(function(c){return '<option value="'+c+'">'}).join(''); }
+}
+window.usarPlantillaEnChat=function(){
+  var sel=document.getElementById('inbox-tpl-sel');
+  var id=sel.value; if(!id) return;
+  var t=DB.plantillas.find(function(x){return x.id===id}); if(!t) return;
+  document.getElementById('inbox-input').value=t.texto;
+  sel.value='';
+  document.getElementById('inbox-input').focus();
+};
+// ── FIN MÓDULO PLANTILLAS ─────────────────────────────────────
+
+// ══════════════════════════════════════════════════════════════
+// MÓDULO: INBOX DE WHATSAPP
+// ══════════════════════════════════════════════════════════════
+var _inboxTelActivo=null;
+
+function inboxConversaciones(){
+  var byTel={};
+  DB.whatsapp_mensajes.forEach(function(m){
+    if(!m.telefono) return;
+    if(!byTel[m.telefono]) byTel[m.telefono]={telefono:m.telefono, nombre:m.nombre||'', ultimo:m, noLeidos:0};
+    if(getTsMs(m) > getTsMs(byTel[m.telefono].ultimo)) byTel[m.telefono].ultimo=m;
+    if(m.nombre && !byTel[m.telefono].nombre) byTel[m.telefono].nombre=m.nombre;
+    if(m.direccion==='entrante' && !m.leido) byTel[m.telefono].noLeidos++;
+  });
+  return Object.keys(byTel).map(function(k){return byTel[k]}).sort(function(a,b){ return getTsMs(b.ultimo)-getTsMs(a.ultimo); });
+}
+
+window.renderInboxBadge = function renderInboxBadge(){
+  var n=DB.whatsapp_mensajes.filter(function(m){return m.direccion==='entrante' && !m.leido}).length;
+  var b=document.getElementById('badge-inbox');
+  if(b){ if(n>0){b.textContent=n;b.style.display='inline'} else b.style.display='none' }
+};
+
+window.renderInbox = function renderInbox(){
+  var listEl=document.getElementById('inbox-lista'); if(!listEl) return;
+  var convs=inboxConversaciones();
+  if(!convs.length){
+    listEl.innerHTML='<div style="color:#aaa;font-size:13px;padding:20px;text-align:center">Aun no hay conversaciones.<br>Apareceran aqui cuando el agente reciba mensajes.</div>';
+  } else {
+    listEl.innerHTML=convs.map(function(c){
+      var activo=c.telefono===_inboxTelActivo;
+      var preview=(c.ultimo.texto||'').slice(0,42);
+      return '<div class="inbox-item'+(activo?' active':'')+'" onclick="abrirChat(\''+c.telefono+'\')">'
+        +'<div class="avp" style="flex-shrink:0">'+(c.nombre?c.nombre[0].toUpperCase():'?')+'</div>'
+        +'<div style="flex:1;min-width:0">'
+          +'<div style="display:flex;justify-content:space-between;gap:6px"><b style="font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+(c.nombre||c.telefono)+'</b>'+(c.noLeidos?'<span class="bdg br" style="flex-shrink:0">'+c.noLeidos+'</span>':'')+'</div>'
+          +'<div style="font-size:12px;color:#888;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+(c.ultimo.direccion==='saliente'?'Tu: ':'')+preview+'</div>'
+        +'</div>'
+      +'</div>';
+    }).join('');
+  }
+  if(_inboxTelActivo) renderChat(_inboxTelActivo);
+  else {
+    var chatEl=document.getElementById('inbox-chat'); if(chatEl) chatEl.innerHTML='<div style="color:#aaa;font-size:13px;padding:24px;text-align:center;margin:auto">Selecciona una conversacion</div>';
+    var hEl=document.getElementById('inbox-chat-head'); if(hEl) hEl.innerHTML='';
+    var rEl=document.getElementById('inbox-reply-wrap'); if(rEl) rEl.style.display='none';
+  }
+};
+
+window.abrirChat=function(tel){
+  _inboxTelActivo=tel;
+  DB.whatsapp_mensajes.filter(function(m){return m.telefono===tel && m.direccion==='entrante' && !m.leido}).forEach(function(m){ fbUpd('whatsapp_mensajes', m.id, {leido:true}); });
+  renderInbox();
+};
+window.abrirChatDesdeLead=function(tel){
+  showPage('inbox');
+  setTimeout(function(){ window.abrirChat(tel); }, 150);
+};
+
+function renderChat(tel){
+  var wrap=document.getElementById('inbox-chat'); if(!wrap) return;
+  var msgs=DB.whatsapp_mensajes.filter(function(m){return m.telefono===tel}).sort(function(a,b){return getTsMs(a)-getTsMs(b)});
+  var conv=inboxConversaciones().find(function(c){return c.telefono===tel});
+  var hEl=document.getElementById('inbox-chat-head');
+  if(hEl) hEl.innerHTML='<b>'+(conv&&conv.nombre?conv.nombre:tel)+'</b><span style="color:#888;font-size:12px;margin-left:8px">'+tel+'</span>';
+  wrap.innerHTML=msgs.map(function(m){
+    var mine=m.direccion==='saliente';
+    var estBadge = mine && m.estado==='pendiente' ? ' <span style="opacity:.6;font-size:10px">&#8226; enviando</span>' : (mine && m.estado==='error' ? ' <span style="color:#b91c1c;font-size:10px">&#8226; error al enviar</span>' : '');
+    return '<div style="display:flex;justify-content:'+(mine?'flex-end':'flex-start')+';margin-bottom:8px">'
+      +'<div style="max-width:70%;padding:8px 12px;border-radius:12px;font-size:13px;white-space:pre-wrap;background:'+(mine?'#e8c547;color:#1a1a2e':'#f0f0f0;color:#222')+'">'+m.texto+estBadge+'</div>'
+    +'</div>';
+  }).join('');
+  wrap.scrollTop=wrap.scrollHeight;
+  var rEl=document.getElementById('inbox-reply-wrap'); if(rEl) rEl.style.display=tel?'flex':'none';
+}
+
+window.enviarInboxMsg=async function(){
+  if(!_inboxTelActivo) return;
+  var ta=document.getElementById('inbox-input');
+  var txt=ta.value.trim();
+  if(!txt) return;
+  ta.value='';
+  await fbAdd('whatsapp_mensajes', { telefono:_inboxTelActivo, direccion:'saliente', texto:txt, estado:'pendiente', leido:true });
+};
+window.inboxInputKey=function(e){
+  if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); window.enviarInboxMsg(); }
+};
+// ── FIN MÓDULO INBOX ───────────────────────────────────────────
