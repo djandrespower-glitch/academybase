@@ -222,6 +222,12 @@ function closeM(id){document.getElementById(id).classList.remove('show')}
 window.closeM=closeM;
 
 function gCN(mid,niv){var c=DB.cursos.find(function(x){return x.id===mid});if(!c)return'-';return niv?c.nombre+' - '+niv:c.nombre}
+function alumnoEnCurso(a,cursoId){
+  if(!a)return false;
+  if(a.moduloId===cursoId)return true;
+  var suCurso=DB.cursos.find(function(c){return c.id===a.moduloId});
+  return !!(suCurso&&(suCurso.incluye||[]).indexOf(cursoId)>-1);
+}
 function gA(id){return DB.alumnos.find(function(x){return x.id===id})}
 function gAN(id){if(!id)return'-';if(id.indexOf('txt:')===0)return id.slice(4);var a=gA(id);return a?a.nombre:'-'}
 function gAC(id){if(!id||id.indexOf('txt:')===0)return'-';var a=gA(id);return a?gCN(a.moduloId,a.nivel):'-'}
@@ -597,24 +603,39 @@ window.openMCur=function(id){
   id=id||null;eCid=id;
   document.getElementById('mc-tit').textContent=id?'Editar curso':'Nuevo curso';
   ['mc-nom','mc-niv','mc-des','mc-ini','mc-fin'].forEach(function(k){document.getElementById(k).value=''});
-  if(id){var c=DB.cursos.find(function(x){return x.id===id});if(c){document.getElementById('mc-nom').value=c.nombre||'';document.getElementById('mc-niv').value=(c.niveles||[]).join(', ');document.getElementById('mc-des').value=c.desc||'';document.getElementById('mc-ini').value=c.inicio||'';document.getElementById('mc-fin').value=c.fin||''}}
+  var incluyeActuales=[];
+  if(id){var c=DB.cursos.find(function(x){return x.id===id});if(c){document.getElementById('mc-nom').value=c.nombre||'';document.getElementById('mc-niv').value=(c.niveles||[]).join(', ');document.getElementById('mc-des').value=c.desc||'';document.getElementById('mc-ini').value=c.inicio||'';document.getElementById('mc-fin').value=c.fin||'';incluyeActuales=c.incluye||[]}}
+  var box=document.getElementById('mc-incluye-box');
+  var otros=DB.cursos.filter(function(c){return c.id!==id});
+  if(!otros.length){
+    box.innerHTML='<div style="font-size:12px;color:#aaa">Crea otros cursos primero para poder combinarlos aqui.</div>';
+  } else {
+    box.innerHTML=otros.map(function(c){
+      return '<label style="display:flex;align-items:center;gap:7px;font-size:13px;padding:4px 0;cursor:pointer">'
+        +'<input type="checkbox" value="'+c.id+'" '+(incluyeActuales.indexOf(c.id)>-1?'checked':'')+' style="width:auto">'
+        +c.nombre+'</label>';
+    }).join('');
+  }
   document.getElementById('mc-btn').onclick=id?function(){updCurso(id)}:saveCurso;
   openM('m-curso');
+}
+function leerIncluyeSeleccionado(){
+  return Array.from(document.querySelectorAll('#mc-incluye-box input[type=checkbox]:checked')).map(function(el){return el.value});
 }
 window.saveCurso=async function(){
   var nom=document.getElementById('mc-nom').value.trim();if(!nom){alert('Nombre requerido.');return}
   var niv=document.getElementById('mc-niv').value.trim();
-  await fbAdd('cursos',{nombre:nom,niveles:niv?niv.split(',').map(function(n){return n.trim()}).filter(Boolean):[],desc:document.getElementById('mc-des').value.trim(),inicio:document.getElementById('mc-ini').value,fin:document.getElementById('mc-fin').value});
+  await fbAdd('cursos',{nombre:nom,niveles:niv?niv.split(',').map(function(n){return n.trim()}).filter(Boolean):[],desc:document.getElementById('mc-des').value.trim(),inicio:document.getElementById('mc-ini').value,fin:document.getElementById('mc-fin').value,incluye:leerIncluyeSeleccionado()});
   closeM('m-curso');
 }
 async function updCurso(id){
   var nom=document.getElementById('mc-nom').value.trim();if(!nom){alert('Nombre requerido.');return}
   var niv=document.getElementById('mc-niv').value.trim();
-  await fbUpd('cursos',id,{nombre:nom,niveles:niv?niv.split(',').map(function(n){return n.trim()}).filter(Boolean):[],desc:document.getElementById('mc-des').value.trim(),inicio:document.getElementById('mc-ini').value,fin:document.getElementById('mc-fin').value});
+  await fbUpd('cursos',id,{nombre:nom,niveles:niv?niv.split(',').map(function(n){return n.trim()}).filter(Boolean):[],desc:document.getElementById('mc-des').value.trim(),inicio:document.getElementById('mc-ini').value,fin:document.getElementById('mc-fin').value,incluye:leerIncluyeSeleccionado()});
   closeM('m-curso');
 }
 window.delCurso=function(id){confirmDel('Eliminar este curso?',async function(){await fbDel('cursos',id)})}
-function renderCursos(){var el=document.getElementById('cursos-lista');if(!el)return;if(!DB.cursos.length){el.innerHTML='<p style="color:#aaa;padding:20px">Sin cursos.</p>';return}el.innerHTML=DB.cursos.map(function(c){var cnt=DB.alumnos.filter(function(a){return a.moduloId===c.id}).length;return'<div class="cc"><div style="display:flex;justify-content:space-between;gap:10px"><div><h4 style="margin-bottom:4px">'+c.nombre+'</h4>'+(c.desc?'<div style="font-size:12px;color:#888;margin-bottom:6px">'+c.desc+'</div>':'')+'<div class="ll">'+(c.niveles||[]).map(function(n){return'<span class="bdg bb">'+n+'</span>'}).join('')+'</div><div style="font-size:11px;color:#888;margin-top:6px">'+cnt+' alumno(s)</div></div><div style="display:flex;gap:6px;flex-shrink:0"><button class="btn bo bsm" onclick="openMCur(\''+c.id+'\')">Editar</button><button class="btn bd bsm" onclick="delCurso(\''+c.id+'\')">X</button></div></div></div>'}).join('')}
+function renderCursos(){var el=document.getElementById('cursos-lista');if(!el)return;if(!DB.cursos.length){el.innerHTML='<p style="color:#aaa;padding:20px">Sin cursos.</p>';return}el.innerHTML=DB.cursos.map(function(c){var cnt=DB.alumnos.filter(function(a){return a.moduloId===c.id}).length;var incluyeNoms=(c.incluye||[]).map(function(cid){var cc=DB.cursos.find(function(x){return x.id===cid});return cc?cc.nombre:null}).filter(Boolean);return'<div class="cc"><div style="display:flex;justify-content:space-between;gap:10px"><div><h4 style="margin-bottom:4px">'+c.nombre+'</h4>'+(c.desc?'<div style="font-size:12px;color:#888;margin-bottom:6px">'+c.desc+'</div>':'')+'<div class="ll">'+(c.niveles||[]).map(function(n){return'<span class="bdg bb">'+n+'</span>'}).join('')+'</div>'+(incluyeNoms.length?'<div style="font-size:11px;color:#7c3aed;margin-top:6px">&#128279; Incluye: '+incluyeNoms.join(', ')+'</div>':'')+'<div style="font-size:11px;color:#888;margin-top:6px">'+cnt+' alumno(s)</div></div><div style="display:flex;gap:6px;flex-shrink:0"><button class="btn bo bsm" onclick="openMCur(\''+c.id+'\')">Editar</button><button class="btn bd bsm" onclick="delCurso(\''+c.id+'\')">X</button></div></div></div>'}).join('')}
 function renderGantt(){var el=document.getElementById('gantt-c');var cf=DB.cursos.filter(function(c){return c.inicio&&c.fin});if(!cf.length){el.innerHTML='<div style="color:#aaa;padding:20px;text-align:center">Agrega fechas a los cursos.</div>';return}var minD=new Date(Math.min.apply(null,cf.map(function(c){return new Date(c.inicio)}))),maxD=new Date(Math.max.apply(null,cf.map(function(c){return new Date(c.fin)})));var total=maxD-minD||1;el.innerHTML=cf.map(function(c){var s=(new Date(c.inicio)-minD)/total*100,w=(new Date(c.fin)-new Date(c.inicio))/total*100;return'<div style="margin-bottom:10px"><div style="font-size:12px;font-weight:500;margin-bottom:4px">'+c.nombre+'</div><div style="background:#f0f0f0;border-radius:4px;height:24px;position:relative"><div style="position:absolute;left:'+s+'%;width:'+Math.max(w,2)+'%;background:#c0392b;height:100%;border-radius:4px;display:flex;align-items:center;padding:0 6px;font-size:11px;font-weight:600;color:#000000;overflow:hidden;white-space:nowrap">'+c.nombre+'</div></div></div>'}).join('')}
 
 // ── PAGOS / INGRESOS ──────────────────────────────────────
@@ -1093,7 +1114,7 @@ window.setCursoFecha=async function(campo,val){
 window.openGrupoModal=function(cursoId,nivel,franja){
   var tmp=document.getElementById('_hm');if(tmp)tmp.remove();
   var curso=DB.cursos.find(function(c){return c.id===cursoId});
-  var alOpts=DB.alumnos.filter(function(a){return a.moduloId===cursoId}).map(function(a){return'<option value="'+a.id+'">'+a.nombre+'</option>'}).join('');
+  var alOpts=DB.alumnos.filter(function(a){return alumnoEnCurso(a,cursoId)}).map(function(a){return'<option value="'+a.id+'">'+a.nombre+'</option>'}).join('');
   var ov=document.createElement('div');ov.className='ov show';ov.id='_hm';
   ov.innerHTML='<div class="modal" style="max-width:420px"><div class="mh"><h3>'+nivel+' - '+franja+'</h3><button class="btn bo bsm" onclick="document.getElementById(\'_hm\').remove()">X</button></div><div class="mb"><div class="fg" style="grid-template-columns:1fr"><div class="fgp"><label>Instructor</label><input id="_hi" placeholder="Nombre del instructor"></div><div class="fgp"><label>Alumnos (Ctrl+clic para varios)</label><select id="_has" multiple style="min-height:90px">'+(alOpts||'<option disabled>Sin alumnos en este curso</option>')+'</select></div><div class="fg" style="grid-template-columns:1fr 1fr"><div class="fgp"><label>Fecha inicio</label><input type="date" id="_hfi" value="'+(curso&&curso.inicio||'')+'"></div><div class="fgp"><label>Fecha fin</label><input type="date" id="_hff" value="'+(curso&&curso.fin||'')+'"></div></div></div></div><div class="mf"><button class="btn bo" onclick="document.getElementById(\'_hm\').remove()">Cancelar</button><button class="btn bp" onclick="window.saveGrupo(\''+cursoId+'\',\''+nivel+'\',\''+franja+'\')">Guardar</button></div></div>';
   document.body.appendChild(ov);
@@ -1140,7 +1161,7 @@ window.delGrupo=function(id){confirmDel('Eliminar este grupo y todos sus alumnos
 window.editGrupo=function(id){
   var g=DB.horario_grupos.find(function(x){return x.id===id});if(!g)return;
   var tmp=document.getElementById('_hm');if(tmp)tmp.remove();
-  var alOpts=DB.alumnos.filter(function(a){return a.moduloId===g.cursoId}).map(function(a){return'<option value="'+a.id+'" '+((g.alumnos||[]).indexOf(a.id)>=0?'selected':'')+'>'+a.nombre+'</option>'}).join('');
+  var alOpts=DB.alumnos.filter(function(a){return alumnoEnCurso(a,g.cursoId)}).map(function(a){return'<option value="'+a.id+'" '+((g.alumnos||[]).indexOf(a.id)>=0?'selected':'')+'>'+a.nombre+'</option>'}).join('');
   var ov=document.createElement('div');ov.className='ov show';ov.id='_hm';
   ov.innerHTML='<div class="modal" style="max-width:420px"><div class="mh"><h3>'+g.nivel+' - '+g.franja+'</h3><button class="btn bo bsm" onclick="document.getElementById(\'_hm\').remove()">X</button></div><div class="mb"><div class="fg" style="grid-template-columns:1fr"><div class="fgp"><label>Instructor</label><input id="_hi" value="'+(g.instructor||'')+'"></div><div class="fgp"><label>Alumnos</label><select id="_has" multiple style="min-height:90px">'+(alOpts||'<option disabled>Sin alumnos</option>')+'</select></div><div class="fg" style="grid-template-columns:1fr 1fr"><div class="fgp"><label>Fecha inicio</label><input type="date" id="_hfi" value="'+(g.fechaIni||'')+'"></div><div class="fgp"><label>Fecha fin</label><input type="date" id="_hff" value="'+(g.fechaFin||'')+'"></div></div></div></div><div class="mf"><button class="btn bd" onclick="window.delGrupo(\''+id+'\');document.getElementById(\'_hm\').remove()" style="margin-right:auto">Eliminar</button><button class="btn bo" onclick="document.getElementById(\'_hm\').remove()">Cancelar</button><button class="btn bp" onclick="window.updGrupo(\''+id+'\')">Guardar</button></div></div>';
   document.body.appendChild(ov);
