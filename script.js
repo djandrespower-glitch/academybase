@@ -2196,4 +2196,4 @@ window.enviarInboxMsg=async function(){
 window.inboxInputKey=function(e){
   if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); window.enviarInboxMsg(); }
 };
-// ── FIN MÓDULO INBOX ───────────────────────────────────────────
+// ── FIN MÓDULO INBOX. ───────────────────────────────────────────
