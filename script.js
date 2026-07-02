@@ -178,7 +178,11 @@ function initApp() {
   listenCol('prospectos',    'prospectos',    function(){ if(document.getElementById('page-embudo').classList.contains('active')) renderEmbudo(); });
   listenCol('leads',         'leads',         function(){ if(document.getElementById('page-leads').classList.contains('active')) renderLeads(); });
   listenCol('plantillas',    'plantillas',    function(){ poblarSelectPlantillasInbox(); if(document.getElementById('page-plantillas').classList.contains('active')) renderPlantillas(); });
-  listenCol('whatsapp_mensajes','whatsapp_mensajes', function(){ renderInboxBadge(); if(document.getElementById('page-inbox').classList.contains('active')) renderInbox(); });
+  listenCol('whatsapp_mensajes','whatsapp_mensajes', function(){
+    renderInboxBadge();
+    DB.whatsapp_mensajes.filter(function(m){ return m.direccion==='entrante'; }).forEach(autoCrearProspectoSiNuevo);
+    if(document.getElementById('page-inbox').classList.contains('active')) renderInbox();
+  });
 }
 
 window.addEventListener("DOMContentLoaded", function() {
@@ -1725,6 +1729,36 @@ function getTsMs(x){
   if (typeof x._ts.toMillis === 'function') return x._ts.toMillis();
   if (x._ts.seconds) return x._ts.seconds*1000;
   return 0;
+}
+
+// ══════════════════════════════════════════════════════════════
+// AUTOMATIZACIÓN: crear prospecto en "Nuevo contacto" cuando
+// entra un mensaje de WhatsApp de un teléfono nuevo
+// ══════════════════════════════════════════════════════════════
+var _prospectosEnProceso = new Set();
+
+async function autoCrearProspectoSiNuevo(mensaje){
+  if (mensaje.direccion !== 'entrante' || !mensaje.telefono) return;
+  var tel = mensaje.telefono;
+  var yaExiste = DB.prospectos.some(function(p){ return p.telefono === tel; });
+  if (yaExiste || _prospectosEnProceso.has(tel)) return;
+  _prospectosEnProceso.add(tel);
+  var etapas = DB.embudo_etapas.slice().sort(function(a,b){ return (a.orden||0)-(b.orden||0); });
+  var primera = etapas.find(function(e){ return (e.nombre||'').trim().toLowerCase()==='nuevo contacto'; }) || etapas[0];
+  if (!primera) { _prospectosEnProceso.delete(tel); return; }
+  try {
+    await fbAdd('prospectos', {
+      nombre: mensaje.nombre || tel,
+      telefono: tel,
+      curso: '',
+      valor: 0,
+      notas: 'Creado automáticamente desde WhatsApp',
+      fecha: new Date().toISOString().split('T')[0],
+      etapaId: primera.id
+    });
+  } finally {
+    _prospectosEnProceso.delete(tel);
+  }
 }
 
 // ══════════════════════════════════════════════════════════════
