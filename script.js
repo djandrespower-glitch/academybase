@@ -1731,6 +1731,17 @@ function getTsMs(x){
   return 0;
 }
 
+function fmtFechaHoraInbox(x){
+  var ms=getTsMs(x); if(!ms) return '';
+  var d=new Date(ms), hoy=new Date();
+  var horaStr=d.toLocaleTimeString('es-CO',{hour:'2-digit',minute:'2-digit'});
+  var esHoy=d.toDateString()===hoy.toDateString();
+  if(esHoy) return horaStr;
+  var ayer=new Date(hoy); ayer.setDate(hoy.getDate()-1);
+  if(d.toDateString()===ayer.toDateString()) return 'Ayer '+horaStr;
+  return d.toLocaleDateString('es-CO',{day:'2-digit',month:'2-digit'})+' '+horaStr;
+}
+
 // ══════════════════════════════════════════════════════════════
 // AUTOMATIZACIÓN: crear prospecto en "Nuevo contacto" cuando
 // entra un mensaje de WhatsApp de un teléfono nuevo
@@ -1933,6 +1944,9 @@ window.usarPlantillaEnChat=function(){
 // MÓDULO: INBOX DE WHATSAPP
 // ══════════════════════════════════════════════════════════════
 var _inboxTelActivo=null;
+var _inboxSearchQ='';
+var _inboxFavoritos={};
+var _inboxFijados={};
 
 function inboxConversaciones(){
   var byTel={};
@@ -1943,7 +1957,11 @@ function inboxConversaciones(){
     if(m.nombre && !byTel[m.telefono].nombre) byTel[m.telefono].nombre=m.nombre;
     if(m.direccion==='entrante' && !m.leido) byTel[m.telefono].noLeidos++;
   });
-  return Object.keys(byTel).map(function(k){return byTel[k]}).sort(function(a,b){ return getTsMs(b.ultimo)-getTsMs(a.ultimo); });
+  return Object.keys(byTel).map(function(k){return byTel[k]}).sort(function(a,b){
+    var fa=_inboxFijados[a.telefono]?1:0, fb=_inboxFijados[b.telefono]?1:0;
+    if(fa!==fb) return fb-fa;
+    return getTsMs(b.ultimo)-getTsMs(a.ultimo);
+  });
 }
 
 window.renderInboxBadge = function renderInboxBadge(){
@@ -1952,21 +1970,116 @@ window.renderInboxBadge = function renderInboxBadge(){
   if(b){ if(n>0){b.textContent=n;b.style.display='inline'} else b.style.display='none' }
 };
 
+function ensureInboxSearchBox(){
+  if(document.getElementById('inbox-search-box')) return;
+  var listEl=document.getElementById('inbox-lista');
+  if(!listEl||!listEl.parentNode) return;
+  var box=document.createElement('div');
+  box.id='inbox-search-box';
+  box.style.cssText='padding:10px 10px 8px 10px';
+  box.innerHTML=
+    '<input id="inbox-search-input" placeholder="Buscar por nombre, numero o mensaje..." '
+    +'style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid #333;background:#161616;color:#eee;font-size:13px;outline:none;box-sizing:border-box">'
+    +'<div style="display:flex;gap:6px;margin-top:8px">'
+      +'<button id="inbox-filtro-todos" class="inbox-filtro-btn" style="flex:1;padding:5px;border-radius:7px;border:1px solid #333;background:#222;color:#eee;font-size:11px;cursor:pointer">Todos</button>'
+      +'<button id="inbox-filtro-fav" class="inbox-filtro-btn" style="flex:1;padding:5px;border-radius:7px;border:1px solid #333;background:transparent;color:#aaa;font-size:11px;cursor:pointer">&#9733; Favoritos</button>'
+      +'<button id="inbox-filtro-fij" class="inbox-filtro-btn" style="flex:1;padding:5px;border-radius:7px;border:1px solid #333;background:transparent;color:#aaa;font-size:11px;cursor:pointer">&#128204; Fijados</button>'
+    +'</div>';
+  listEl.parentNode.insertBefore(box, listEl);
+  document.getElementById('inbox-search-input').addEventListener('input', function(e){
+    _inboxSearchQ=e.target.value.toLowerCase().trim();
+    renderInbox();
+  });
+  ['inbox-filtro-todos','inbox-filtro-fav','inbox-filtro-fij'].forEach(function(id){
+    document.getElementById(id).addEventListener('click', function(){
+      window._inboxFiltroActivo = id;
+      ['inbox-filtro-todos','inbox-filtro-fav','inbox-filtro-fij'].forEach(function(bid){
+        var b=document.getElementById(bid);
+        b.style.background = bid===id ? '#e8c547' : 'transparent';
+        b.style.color = bid===id ? '#1a1a2e' : '#aaa';
+      });
+      renderInbox();
+    });
+  });
+}
+window._inboxFiltroActivo='inbox-filtro-todos';
+
+window.toggleFavoritoChat=function(tel,ev){
+  if(ev) ev.stopPropagation();
+  _inboxFavoritos[tel]=!_inboxFavoritos[tel];
+  renderInbox();
+};
+window.toggleFijarChat=function(tel,ev){
+  if(ev) ev.stopPropagation();
+  _inboxFijados[tel]=!_inboxFijados[tel];
+  renderInbox();
+};
+
+var EMOJIS_INBOX=['😀','😂','😍','👍','🙏','🎉','🔥','❤️','😊','🙌','✅','📅','🎵','🎧','💰','📍','⏰','😅','🤔','👏','🎧','🕺','💬','📞'];
+function ensureEmojiPicker(){
+  var wrap=document.getElementById('inbox-reply-wrap');
+  if(!wrap||document.getElementById('inbox-emoji-btn')) return;
+  wrap.style.position=wrap.style.position||'relative';
+  var btn=document.createElement('button');
+  btn.id='inbox-emoji-btn'; btn.type='button'; btn.textContent='😊';
+  btn.style.cssText='font-size:18px;background:none;border:none;cursor:pointer;padding:0 8px;flex-shrink:0';
+  btn.onclick=function(e){ e.stopPropagation(); var p=document.getElementById('inbox-emoji-panel'); p.style.display=p.style.display==='none'?'grid':'none'; };
+  wrap.insertBefore(btn, wrap.firstChild);
+  var panel=document.createElement('div');
+  panel.id='inbox-emoji-panel';
+  panel.style.cssText='display:none;position:absolute;bottom:56px;left:0;background:#1e1e1e;border:1px solid #333;border-radius:10px;padding:8px;grid-template-columns:repeat(8,1fr);gap:2px;z-index:60;box-shadow:0 4px 16px rgba(0,0,0,.4)';
+  panel.innerHTML=EMOJIS_INBOX.map(function(em){return '<span onclick="window.insertEmoji(\''+em+'\')" style="cursor:pointer;font-size:19px;padding:4px;text-align:center;border-radius:6px">'+em+'</span>';}).join('');
+  wrap.appendChild(panel);
+  document.addEventListener('click', function(ev){
+    if(panel.style.display!=='none' && ev.target!==btn && !panel.contains(ev.target)) panel.style.display='none';
+  });
+}
+window.insertEmoji=function(em){
+  var ta=document.getElementById('inbox-input'); if(!ta) return;
+  var start=ta.selectionStart||ta.value.length, end=ta.selectionEnd||ta.value.length;
+  ta.value=ta.value.slice(0,start)+em+ta.value.slice(end);
+  ta.focus(); ta.selectionStart=ta.selectionEnd=start+em.length;
+  var panel=document.getElementById('inbox-emoji-panel'); if(panel) panel.style.display='none';
+};
+
 window.renderInbox = function renderInbox(){
   var listEl=document.getElementById('inbox-lista'); if(!listEl) return;
+  ensureInboxSearchBox();
+  ensureEmojiPicker();
   var convs=inboxConversaciones();
+
+  if(_inboxSearchQ){
+    convs=convs.filter(function(c){
+      if((c.nombre||'').toLowerCase().indexOf(_inboxSearchQ)>-1) return true;
+      if((c.telefono||'').toLowerCase().indexOf(_inboxSearchQ)>-1) return true;
+      var msgs=DB.whatsapp_mensajes.filter(function(m){return m.telefono===c.telefono});
+      return msgs.some(function(m){ return (m.texto||'').toLowerCase().indexOf(_inboxSearchQ)>-1; });
+    });
+  }
+  if(window._inboxFiltroActivo==='inbox-filtro-fav') convs=convs.filter(function(c){return _inboxFavoritos[c.telefono];});
+  if(window._inboxFiltroActivo==='inbox-filtro-fij') convs=convs.filter(function(c){return _inboxFijados[c.telefono];});
+
   if(!convs.length){
-    listEl.innerHTML='<div style="color:#aaa;font-size:13px;padding:20px;text-align:center">Aun no hay conversaciones.<br>Apareceran aqui cuando el agente reciba mensajes.</div>';
+    listEl.innerHTML='<div style="color:#aaa;font-size:13px;padding:20px;text-align:center">'+(_inboxSearchQ?'Sin resultados para tu busqueda.':'Aun no hay conversaciones.<br>Apareceran aqui cuando el agente reciba mensajes.')+'</div>';
   } else {
     listEl.innerHTML=convs.map(function(c){
       var activo=c.telefono===_inboxTelActivo;
-      var preview=(c.ultimo.texto||'').slice(0,42);
-      return '<div class="inbox-item'+(activo?' active':'')+'" onclick="abrirChat(\''+c.telefono+'\')">'
+      var preview=(c.ultimo.texto||'').slice(0,38);
+      var esFav=!!_inboxFavoritos[c.telefono], esFij=!!_inboxFijados[c.telefono];
+      return '<div class="inbox-item'+(activo?' active':'')+'" onclick="abrirChat(\''+c.telefono+'\')" style="position:relative">'
         +'<div class="avp" style="flex-shrink:0">'+(c.nombre?c.nombre[0].toUpperCase():'?')+'</div>'
         +'<div style="flex:1;min-width:0">'
-          +'<div style="display:flex;justify-content:space-between;gap:6px"><b style="font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+(c.nombre||c.telefono)+'</b>'+(c.noLeidos?'<span class="bdg br" style="flex-shrink:0">'+c.noLeidos+'</span>':'')+'</div>'
-          +'<div style="font-size:12px;color:#888;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+(c.ultimo.direccion==='saliente'?'Tu: ':'')+preview+'</div>'
+          +'<div style="display:flex;justify-content:space-between;align-items:center;gap:6px">'
+            +'<b style="font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+(esFij?'&#128204; ':'')+(c.nombre||c.telefono)+'</b>'
+            +'<span style="font-size:10px;color:#888;flex-shrink:0">'+fmtFechaHoraInbox(c.ultimo)+'</span>'
+          +'</div>'
+          +'<div style="display:flex;justify-content:space-between;align-items:center;gap:6px">'
+            +'<span style="font-size:12px;color:#888;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+(c.ultimo.direccion==='saliente'?'Tu: ':'')+preview+'</span>'
+            +(c.noLeidos?'<span class="bdg br" style="flex-shrink:0">'+c.noLeidos+'</span>':'')
+          +'</div>'
         +'</div>'
+        +'<span onclick="window.toggleFavoritoChat(\''+c.telefono+'\',event)" title="Favorito" style="cursor:pointer;font-size:14px;color:'+(esFav?'#e8c547':'#444')+';flex-shrink:0">&#9733;</span>'
+        +'<span onclick="window.toggleFijarChat(\''+c.telefono+'\',event)" title="Fijar" style="cursor:pointer;font-size:13px;color:'+(esFij?'#e8c547':'#444')+';flex-shrink:0">&#128204;</span>'
       +'</div>';
     }).join('');
   }
@@ -1997,8 +2110,9 @@ function renderChat(tel){
   wrap.innerHTML=msgs.map(function(m){
     var mine=m.direccion==='saliente';
     var estBadge = mine && m.estado==='pendiente' ? ' <span style="opacity:.6;font-size:10px">&#8226; enviando</span>' : (mine && m.estado==='error' ? ' <span style="color:#b91c1c;font-size:10px">&#8226; error al enviar</span>' : '');
+    var hora='<div style="font-size:10px;opacity:.55;margin-top:3px;text-align:right">'+fmtFechaHoraInbox(m)+'</div>';
     return '<div style="display:flex;justify-content:'+(mine?'flex-end':'flex-start')+';margin-bottom:8px">'
-      +'<div style="max-width:70%;padding:8px 12px;border-radius:12px;font-size:13px;white-space:pre-wrap;background:'+(mine?'#e8c547;color:#1a1a2e':'#f0f0f0;color:#222')+'">'+m.texto+estBadge+'</div>'
+      +'<div style="max-width:70%;padding:8px 12px;border-radius:12px;font-size:13px;white-space:pre-wrap;background:'+(mine?'#e8c547;color:#1a1a2e':'#f0f0f0;color:#222')+'">'+m.texto+estBadge+hora+'</div>'
     +'</div>';
   }).join('');
   wrap.scrollTop=wrap.scrollHeight;
