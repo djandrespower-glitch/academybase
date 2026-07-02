@@ -11,9 +11,6 @@ import {
 import {
   getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-import {
-  getStorage, ref, uploadBytes, getDownloadURL
-} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js";
 
 const firebaseConfig = {
   apiKey:            "AIzaSyCSrMuYRkMAZrp5v0AafK45xqFwdkBquqY",
@@ -27,7 +24,6 @@ const firebaseConfig = {
 const fbApp = initializeApp(firebaseConfig);
 const db    = getFirestore(fbApp);
 const auth  = getAuth(fbApp);
-const storage = getStorage(fbApp);
 var rolActual = null;
 
 async function fbAdd(col, data) { const r = await addDoc(collection(db, col), {...data, _ts: serverTimestamp()}); return r.id; }
@@ -2083,12 +2079,14 @@ window.enviarArchivoInboxMsg=async function(file){
       telefono:_inboxTelActivo, direccion:'saliente', texto:'Subiendo archivo...',
       tipo:'subiendo', estado:'subiendo', leido:true
     });
-    var path='whatsapp_media/'+_inboxTelActivo+'/'+Date.now()+'_'+file.name.replace(/[^a-zA-Z0-9._-]/g,'_');
-    var sref=ref(storage, path);
-    await uploadBytes(sref, file);
-    var url=await getDownloadURL(sref);
+    var fd=new FormData();
+    fd.append('archivo', file);
+    fd.append('telefono', _inboxTelActivo);
+    var resp=await fetch('https://api.djacademy.com.co/upload-media', { method:'POST', body:fd });
+    var data=await resp.json();
+    if(!data.ok) throw new Error(data.error || 'Error subiendo el archivo');
     await fbUpd('whatsapp_mensajes', statusId, {
-      texto:'', tipo:tipo, archivoUrl:url, archivoNombre:file.name, estado:'pendiente'
+      texto:'', tipo:tipo, archivoUrl:data.url, archivoNombre:file.name, estado:'pendiente'
     });
   }catch(err){
     console.error('Error subiendo archivo:', err);
