@@ -11,6 +11,9 @@ import {
 import {
   getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import {
+  getStorage, ref, uploadBytes, getDownloadURL
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js";
 
 const firebaseConfig = {
   apiKey:            "AIzaSyCSrMuYRkMAZrp5v0AafK45xqFwdkBquqY",
@@ -24,6 +27,7 @@ const firebaseConfig = {
 const fbApp = initializeApp(firebaseConfig);
 const db    = getFirestore(fbApp);
 const auth  = getAuth(fbApp);
+const storage = getStorage(fbApp);
 var rolActual = null;
 
 async function fbAdd(col, data) { const r = await addDoc(collection(db, col), {...data, _ts: serverTimestamp()}); return r.id; }
@@ -1979,7 +1983,7 @@ function ensureInboxSearchBox(){
   box.style.cssText='padding:10px 10px 8px 10px';
   box.innerHTML=
     '<input id="inbox-search-input" placeholder="Buscar por nombre, numero o mensaje..." '
-    +'style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid #333;background:#161616;color:#eee;font-size:13px;outline:none;box-sizing:border-box">'
+    +'style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid #6b5d45;background:#4a4030;color:#f5efdc;font-size:13px;outline:none;box-sizing:border-box">'
     +'<div style="display:flex;gap:6px;margin-top:8px">'
       +'<button id="inbox-filtro-todos" class="inbox-filtro-btn" style="flex:1;padding:5px;border-radius:7px;border:1px solid #333;background:#222;color:#eee;font-size:11px;cursor:pointer">Todos</button>'
       +'<button id="inbox-filtro-fav" class="inbox-filtro-btn" style="flex:1;padding:5px;border-radius:7px;border:1px solid #333;background:transparent;color:#aaa;font-size:11px;cursor:pointer">&#9733; Favoritos</button>'
@@ -2016,6 +2020,8 @@ window.toggleFijarChat=function(tel,ev){
 };
 
 var EMOJIS_INBOX=['😀','😂','😍','👍','🙏','🎉','🔥','❤️','😊','🙌','✅','📅','🎵','🎧','💰','📍','⏰','😅','🤔','👏','🎧','🕺','💬','📞'];
+var MAX_ARCHIVO_BYTES = 10 * 1024 * 1024; // 10 MB
+
 function ensureEmojiPicker(){
   var wrap=document.getElementById('inbox-reply-wrap');
   if(!wrap||document.getElementById('inbox-emoji-btn')) return;
@@ -2033,6 +2039,22 @@ function ensureEmojiPicker(){
   document.addEventListener('click', function(ev){
     if(panel.style.display!=='none' && ev.target!==btn && !panel.contains(ev.target)) panel.style.display='none';
   });
+
+  // Botón de adjuntar archivos
+  var abtn=document.createElement('button');
+  abtn.id='inbox-attach-btn'; abtn.type='button'; abtn.textContent='📎';
+  abtn.title='Adjuntar imagen, video o PDF (máx 10MB)';
+  abtn.style.cssText='font-size:18px;background:none;border:none;cursor:pointer;padding:0 8px;flex-shrink:0';
+  wrap.insertBefore(abtn, btn.nextSibling);
+  var finput=document.createElement('input');
+  finput.type='file'; finput.id='inbox-file-input'; finput.style.display='none';
+  finput.accept='image/*,video/*,application/pdf';
+  wrap.appendChild(finput);
+  abtn.onclick=function(e){ e.stopPropagation(); finput.value=''; finput.click(); };
+  finput.onchange=function(e){
+    var f=e.target.files[0]; if(!f) return;
+    window.enviarArchivoInboxMsg(f);
+  };
 }
 window.insertEmoji=function(em){
   var ta=document.getElementById('inbox-input'); if(!ta) return;
@@ -2040,6 +2062,39 @@ window.insertEmoji=function(em){
   ta.value=ta.value.slice(0,start)+em+ta.value.slice(end);
   ta.focus(); ta.selectionStart=ta.selectionEnd=start+em.length;
   var panel=document.getElementById('inbox-emoji-panel'); if(panel) panel.style.display='none';
+};
+
+function tipoArchivoWA(mime){
+  if(mime.indexOf('image/')===0) return 'image';
+  if(mime.indexOf('video/')===0) return 'video';
+  return 'document';
+}
+
+window.enviarArchivoInboxMsg=async function(file){
+  if(!_inboxTelActivo){ alert('Selecciona una conversacion primero.'); return; }
+  if(file.size > MAX_ARCHIVO_BYTES){
+    alert('El archivo pesa '+(file.size/1024/1024).toFixed(1)+' MB. El maximo permitido es 10 MB.');
+    return;
+  }
+  var tipo=tipoArchivoWA(file.type);
+  var statusId=null;
+  try{
+    statusId = await fbAdd('whatsapp_mensajes', {
+      telefono:_inboxTelActivo, direccion:'saliente', texto:'Subiendo archivo...',
+      tipo:'subiendo', estado:'subiendo', leido:true
+    });
+    var path='whatsapp_media/'+_inboxTelActivo+'/'+Date.now()+'_'+file.name.replace(/[^a-zA-Z0-9._-]/g,'_');
+    var sref=ref(storage, path);
+    await uploadBytes(sref, file);
+    var url=await getDownloadURL(sref);
+    await fbUpd('whatsapp_mensajes', statusId, {
+      texto:'', tipo:tipo, archivoUrl:url, archivoNombre:file.name, estado:'pendiente'
+    });
+  }catch(err){
+    console.error('Error subiendo archivo:', err);
+    if(statusId) await fbUpd('whatsapp_mensajes', statusId, {texto:'Error al subir el archivo', estado:'error'});
+    alert('No se pudo subir el archivo: '+err.message);
+  }
 };
 
 window.renderInbox = function renderInbox(){
@@ -2064,7 +2119,8 @@ window.renderInbox = function renderInbox(){
   } else {
     listEl.innerHTML=convs.map(function(c){
       var activo=c.telefono===_inboxTelActivo;
-      var preview=(c.ultimo.texto||'').slice(0,38);
+      var previewMap={image:'📷 Foto', video:'🎥 Video', document:'📄 Documento', subiendo:'Subiendo archivo...'};
+      var preview=previewMap[c.ultimo.tipo] || (c.ultimo.texto||'').slice(0,38);
       var esFav=!!_inboxFavoritos[c.telefono], esFij=!!_inboxFijados[c.telefono];
       return '<div class="inbox-item'+(activo?' active':'')+'" onclick="abrirChat(\''+c.telefono+'\')" style="position:relative">'
         +'<div class="avp" style="flex-shrink:0">'+(c.nombre?c.nombre[0].toUpperCase():'?')+'</div>'
@@ -2109,10 +2165,22 @@ function renderChat(tel){
   if(hEl) hEl.innerHTML='<b>'+(conv&&conv.nombre?conv.nombre:tel)+'</b><span style="color:#888;font-size:12px;margin-left:8px">'+tel+'</span>';
   wrap.innerHTML=msgs.map(function(m){
     var mine=m.direccion==='saliente';
-    var estBadge = mine && m.estado==='pendiente' ? ' <span style="opacity:.6;font-size:10px">&#8226; enviando</span>' : (mine && m.estado==='error' ? ' <span style="color:#b91c1c;font-size:10px">&#8226; error al enviar</span>' : '');
+    var estBadge = mine && m.estado==='pendiente' ? ' <span style="opacity:.6;font-size:10px">&#8226; enviando</span>' : (mine && (m.estado==='error') ? ' <span style="color:#b91c1c;font-size:10px">&#8226; error al enviar</span>' : (mine && m.estado==='subiendo' ? ' <span style="opacity:.6;font-size:10px">&#8226; subiendo...</span>' : ''));
     var hora='<div style="font-size:10px;opacity:.55;margin-top:3px;text-align:right">'+fmtFechaHoraInbox(m)+'</div>';
+    var contenido;
+    if(m.tipo==='image' && m.archivoUrl){
+      contenido='<img src="'+m.archivoUrl+'" style="max-width:220px;border-radius:8px;display:block;cursor:zoom-in" onclick="window.zoomFoto(\''+m.archivoUrl+'\')">'+(m.texto?'<div style="margin-top:4px">'+m.texto+'</div>':'');
+    } else if(m.tipo==='video' && m.archivoUrl){
+      contenido='<video src="'+m.archivoUrl+'" controls style="max-width:220px;border-radius:8px;display:block"></video>'+(m.texto?'<div style="margin-top:4px">'+m.texto+'</div>':'');
+    } else if(m.tipo==='document' && m.archivoUrl){
+      contenido='<a href="'+m.archivoUrl+'" target="_blank" rel="noopener" style="display:flex;align-items:center;gap:8px;text-decoration:none;color:inherit;background:rgba(0,0,0,.08);border-radius:8px;padding:8px 10px"><span style="font-size:20px">&#128196;</span><span style="font-size:12px;word-break:break-all">'+(m.archivoNombre||'Documento')+'</span></a>';
+    } else if(m.tipo==='subiendo'){
+      contenido='<span style="opacity:.7;font-style:italic">Subiendo archivo...</span>';
+    } else {
+      contenido=m.texto;
+    }
     return '<div style="display:flex;justify-content:'+(mine?'flex-end':'flex-start')+';margin-bottom:8px">'
-      +'<div style="max-width:70%;padding:8px 12px;border-radius:12px;font-size:13px;white-space:pre-wrap;background:'+(mine?'#e8c547;color:#1a1a2e':'#f0f0f0;color:#222')+'">'+m.texto+estBadge+hora+'</div>'
+      +'<div style="max-width:70%;padding:8px 12px;border-radius:12px;font-size:13px;white-space:pre-wrap;background:'+(mine?'#e8c547;color:#1a1a2e':'#f0f0f0;color:#222')+'">'+contenido+estBadge+hora+'</div>'
     +'</div>';
   }).join('');
   wrap.scrollTop=wrap.scrollHeight;
